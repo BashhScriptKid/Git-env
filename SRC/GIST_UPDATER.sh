@@ -63,7 +63,7 @@ Updater()
         }
 
         broken_version_check(){
-            if bash -n ${TEMP_FILE}; then
+            if bash -n "$TEMP_FILE"; then
                 echo -ne "\e[1m\e[93m"
                 echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try updating and try again later?"
                 echo -ne "\e[0m"
@@ -97,7 +97,7 @@ Updater()
             broken_version_check || return 1
             log "Functionality/syntax test returned 0"
 
-            (chmod +x $TEMP_FILE && bash -n $TEMP_FILE) || (echo "Script check failed (see above)." && return 1)
+            (chmod +x "$TEMP_FILE" && bash -n "$TEMP_FILE") || (echo "Script check failed (see above)." && return 1)
 
             if [[ ! -s "$TEMP_FILE" ]]; then
                 echo "Updater: downloaded file is empty, aborting."
