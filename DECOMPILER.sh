@@ -16,13 +16,12 @@ fi
 # Find the first alphabet part of the commented line
 get_function_name() {
     local line="$1"
-    echo "${line#${PREFIX}}"
+    echo "${line#"${PREFIX}"}"
 }
 
 
 main_script_line_looper() {
     local line
-    local function_content
     local function_name=""
     local output_file=""
     local INPUT_FILE="$1"
@@ -45,6 +44,12 @@ main_script_line_looper() {
 
             # Start new function
             function_name=$(get_function_name "$line")
+
+            # Force exit on END tag
+            if [[ $function_name == "END" ]]; then
+                break
+            fi
+
             output_file="$function_name.sh"
             echo "Processing function: $function_name"
 
