@@ -33,6 +33,7 @@
 # Discard 'no-source warning', since running head already serves as a script subshell.
 inHead=1
 
+# Auto-generated, do not modify!
 #--| sourceable.list
 source ./SRC/CONSTANTS.sh
 source ./SRC/CONFIG_VARS.sh
