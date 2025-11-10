@@ -1,33 +1,33 @@
 #!/bin/bash -i
 
-#==============================================================================
-# Git-Shell Environment
-# A ctl-like interface for Git operations
-#==============================================================================
-# Version: 2.9-i
-# Author: BashhScriptKid <contact@bashh.slmail.me>
-# SPDX-License-Identifier: WTFBYPL-1.0
-#   This is a custom license based on the WTFPL with attribution required.
-#   See full license text below.
-#
-###     DO WHAT THE FUCK YOU WANT TO WITH CREDIT PUBLIC LICENSE
-###                    Version 1, May 2025
-###
-### Copyright (C) 2025 BashhScriptKid <contact@bashh.slmail.me>
-###
-### Everyone is permitted to copy and distribute verbatim or modified
-### copies of this license document, and changing it is allowed as long
-### as the name is changed and original author is credited, excluding
-### the work of this license.
-###
-###            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-###   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-###
-###  0. You just DO WHAT THE FUCK YOU WANT TO, as long as the original creator/author is credited.
-#
-#==============================================================================
-#
-# "#--|" is for decompilation purposes; please do not remove those lines on master branch
+##==============================================================================
+## Git-Shell Environment
+## A ctl-like interface for Git operations
+##==============================================================================
+## Version: 2.9-i
+## Author: BashhScriptKid <contact@bashh.slmail.me>
+## SPDX-License-Identifier: WTFBYPL-1.0
+##   This is a custom license based on the WTFPL with attribution required.
+##   See full license text below.
+##
+####     DO WHAT THE FUCK YOU WANT TO WITH CREDIT PUBLIC LICENSE
+####                    Version 1, May 2025
+####
+#### Copyright (C) 2025 BashhScriptKid <contact@bashh.slmail.me>
+####
+#### Everyone is permitted to copy and distribute verbatim or modified
+#### copies of this license document, and changing it is allowed as long
+#### as the name is changed and original author is credited, excluding
+#### the work of this license.
+####
+####            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+####   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+####
+####  0. You just DO WHAT THE FUCK YOU WANT TO, as long as the original creator/author is credited.
+##
+##==============================================================================
+##
+## "#--" is for decompilation purposes; please do not remove those lines on master branch
 
 #--|CONSTANTS
 #------------------------------------------------------------------------------
@@ -66,13 +66,6 @@ ARG=""
 # Initialization & Safety Checks
 #------------------------------------------------------------------------------
 
-# Prevent script from being sourced
-(return 0 2>/dev/null) && {
-    echo "PLEASE Don't source this script — run it directly with ./git-shell.sh"
-    return 1
-}
-
-
 # Verify Git installation
 check_git_installation() {
     if ! command -v git >/dev/null 2>&1; then
@@ -85,6 +78,13 @@ check_git_installation() {
 disable_history_expansion() {
     set +H
 }
+
+# Prevent script from being sourced
+(return 0 2>/dev/null) && test $inHead -ne 1 && {
+    echo "PLEASE Don't source this script — run it directly with ./git-shell.sh"
+    return 1
+}
+
 
 #--|LOGGER
 #------------------------------------------------------------------------------
@@ -164,6 +164,7 @@ It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
 
 Written in Bash by BashhScriptKid
 EOF
+    #'
 }
 
 #--|ARG_PROCESSOR
