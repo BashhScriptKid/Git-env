@@ -13,6 +13,7 @@ readonly EVAL_SYMBOL=":"   # Evaluate or interpret (e.g. inline code)
 readonly RUN_SYMBOL=">"    # Run or forward
 readonly IGNORE_SYMBOL="-" # Probably just cosmetic, skip this
 
+anyInputToken=($SRC_SYMBOL $EXEC_SYMBOL $EVAL_SYMBOL $RUN_SYMBOL)
 HEADFILE="./_head.sh"
 SPLITFILEDIR="./SRC"
 func_lists=()
@@ -38,9 +39,15 @@ if [[ -z "$INPUT_FILE" ]]; then
 fi
 
 verify_file() {
+    [[ ! -f $INPUT_FILE ]] && echo "File does not exist!" && exit 1
+    
     is_script() {
         logdo "Checking for signs of shell script"
-        if [[ $INPUT_FILE == "*.sh" ]] || [[ -n "${INPUT_CONTENT[$i]}" && "${INPUT_CONTENT[$i]}" == "\#!*" ]]; then
+        
+        first_line="${INPUT_CONTENT[0]:-}"
+        second_line="${INPUT_CONTENT[1]:-}"
+
+        if [[ "$INPUT_FILE" == *.sh ]] || [[ "$first_line" == "#!" || "$second_line" == "#!" ]]; then
             ok
         else
             ok "Not Found"
@@ -51,8 +58,8 @@ verify_file() {
 
     has_any_prefix() {
         hasPrefix=0
-        for line in ${content_array}; do
-            if [[ "$line" == $PREFIX* || "$line" == $NOSOURCE_PREFIX* ]]; then
+        for line in ${INPUT_CONTENT[@]}; do
+            if [[ "$line" == $PREFIX* ]]; then
                 hasPrefix=1
                 break
             fi
@@ -60,6 +67,7 @@ verify_file() {
 
         if [[ $hasPrefix -ne 1 ]]; then
             echo "Cannot found any annotations! This is required to split the files accordingly."
+            exit 1
         fi
     }
 
@@ -108,8 +116,95 @@ create_srcs() {
 }
 
 update_srcs() {
-    rm -rf "$SPLITFILEDIR/*"
-    write_srcs
+    # Build a list of current function files
+    existing_files=()
+    while IFS= read -r -d '' file; do
+        existing_files+=("$file")
+    done < <(find "$SPLITFILEDIR" -mindepth 1 -maxdepth 1 -type f -print0)
+
+    # Track files that should exist after update
+    updated_files=()
+
+    # Populate func, since write_srcs is not called
+    record=0
+    while IFS= read -r line; do
+        if [[ $line == "${PREFIX} sourceable.list" ]]; then
+            record=1
+            continue
+        elif [[ $line == "${PREFIX} sourceable.list END" ]]; then
+            record=0
+            break
+        fi
+
+        [[ $record -eq 1 ]] && func_lists+=("$line")
+    done < "$HEADFILE"
+
+    # Iterate over func_lists (these are the target functions with path)
+    for func in "${func_lists[@]}"; do
+
+        # Purify path from symbolic prefix, if present
+        func_path="${func#source }"
+        func_path="${func_path#exec }"
+        func_path="${func_path#eval }"
+
+        updated_files+=("$func_path")
+
+        # Gather new content from INPUT_CONTENT to reference from (New)
+        func_name="$(basename "$func_path" .sh)" # Strip to only name
+        new_content=()
+        within_func=0
+        for line in "${INPUT_CONTENT[@]}"; do
+            for token in "${anyInputToken[@]}"; do
+                if [[ "$line" == "${PREFIX}${token} $func_name" ]]; then
+                    within_func=1
+                    break
+                fi
+            done
+
+            # Ending the function block
+            if [[ "$within_func" -eq 1 ]] && [[ "$line" == "$PREFIX "* ]] && [[ ! " ${anyInputToken[@]} " =~ " ${line#$PREFIX} " ]]; then
+                within_func=0
+            fi
+
+            [[ "$within_func" -eq 1 ]] && new_content+=("$line")
+        done
+
+        # Skip if function has no content
+        [[ ${#new_content[@]} -eq 0 ]] && continue
+
+        # Overwrite, or create new file on difference
+        if [[ ! -f "$func_path" ]] || ! cmp -s <(printf "%s\n" "${old_content[@]}") <(printf "%s\n" "${new_content[@]}"); then
+            printf "%s\n" "${new_content[@]}" > "$func_path"
+            chmod +x "$func_path"
+            echo "Updated: $func_path"
+        fi
+
+
+        # Convert new content to string 
+        new_content_data=$(printf "%s\n" "${new_content[@]}")
+
+        # Overwriting time 
+        printf "%s\n" "${new_content[@]}" > "$func_path"
+        
+        echo "Updated: $func_path"
+    done
+
+    # Prompt before removing old files no longer present
+    for f in "${existing_files[@]}"; do
+        if [[ ! " ${updated_files[*]} " =~ " $f " ]]; then
+            read -n1 -p "Obsolete file '$f' found. Remove? [y/N]: " ans
+            echo
+            case "${ans,,}" in   # convert to lowercase
+                y)
+                    rm -f "$f"
+                    echo "Removed: $f"
+                    ;;
+                *)
+                    echo "Skipped: $f"
+                    ;;
+            esac
+        fi
+    done
 }
 
 write_srcs() {
@@ -119,7 +214,7 @@ write_srcs() {
             [[ -n "$output_file" ]] && exec 3>&-
 
             # Make the previous file executable
-            chmod +x "$output_file"
+            [[ ! -z "$output_file" ]] && chmod +x "$output_file"
 
             # Start new function
             function_name=$(get_function_name "$line")
@@ -244,6 +339,8 @@ update_headfile() {
         done
     fi
 }
+
+verify_file
 
 if [[ ! -d "$SPLITFILEDIR" ]]; then
     create_srcs
