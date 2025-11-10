@@ -34,7 +34,7 @@
 inHead=1
 
 # Auto-generated, do not modify!
-#--| sourceable.list
+#-- sourceable.list
 source ./SRC/CONSTANTS.sh
 source ./SRC/CONFIG_VARS.sh
 source ./SRC/SANITY_CHECKS.sh
@@ -53,4 +53,4 @@ source ./SRC/INTERFACES.sh
 source ./SRC/GIST_UPDATER.sh
 source ./SRC/MAIN.sh
 source ./SRC/m.sh
-#--| sourceable.list END
+#-- sourceable.list END
