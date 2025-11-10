@@ -2,13 +2,6 @@
 # Initialization & Safety Checks
 #------------------------------------------------------------------------------
 
-# Prevent script from being sourced
-(return 0 2>/dev/null) && {
-    echo "PLEASE Don't source this script — run it directly with ./git-shell.sh"
-    return 1
-}
-
-
 # Verify Git installation
 check_git_installation() {
     if ! command -v git >/dev/null 2>&1; then
@@ -21,4 +14,11 @@ check_git_installation() {
 disable_history_expansion() {
     set +H
 }
+
+# Prevent script from being sourced
+(return 0 2>/dev/null) && test $inHead -ne 1 && {
+    echo "PLEASE Don't source this script — run it directly with ./git-shell.sh"
+    return 1
+}
+
 
