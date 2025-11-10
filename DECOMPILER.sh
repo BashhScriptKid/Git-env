@@ -107,10 +107,14 @@ create_srcs() {
     write_srcs
 }
 
+update_srcs() {
+    rm -rf "$SPLITFILEDIR/*"
+    write_srcs
+}
+
 write_srcs() {
     for line in "${INPUT_CONTENT[@]}"; do
         if [[ "$line" == $PREFIX* ]] && [[ $(get_type_token $line) != "${IGNORE_SYMBOL}" ]]; then
-            
             # Close previous function file if it exists
             [[ -n "$output_file" ]] && exec 3>&-
 
@@ -244,7 +248,7 @@ update_headfile() {
 if [[ ! -d "$SPLITFILEDIR" ]]; then
     create_srcs
 else 
-    write_srcs
+    update_srcs
 fi
 
 # Initialize headfile with shebang
