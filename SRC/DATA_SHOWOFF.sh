@@ -36,7 +36,7 @@ solving a problem that (mostly) doesn't exist.
 It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
 
 Written in Bash by BashhScriptKid
-EOF 
-#'
+EOF
+    #'
 }
 
