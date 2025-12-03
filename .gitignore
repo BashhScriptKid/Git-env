@@ -1,2 +1,10 @@
 # Editor swap files
 *.kate-swp
+
+# For mono-master:
+SRC*
+DISASSEMBLER.sh
+ASSEMBLER.sh
+DECOMPILER.sh
+COMPILER.sh
+_head.sh
