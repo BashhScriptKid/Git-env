@@ -11,23 +11,24 @@ readonly SRC_SYMBOL="|"    # Source/import something
 readonly EXEC_SYMBOL="!"   # Execute directly
 readonly EVAL_SYMBOL=":"   # Evaluate or interpret (e.g. inline code)
 readonly RUN_SYMBOL=">"    # Run or forward
+readonly OBJ_SYMBOL="."    # For classes (who even uses OOP Bash?)
 readonly IGNORE_SYMBOL="-" # Probably just cosmetic, skip this
 
-anyInputToken=($SRC_SYMBOL $EXEC_SYMBOL $EVAL_SYMBOL $RUN_SYMBOL)
+anyInputToken=("$SRC_SYMBOL" "$EXEC_SYMBOL" "$EVAL_SYMBOL" "$RUN_SYMBOL")
 HEADFILE="./_head.sh"
 SPLITFILEDIR="./SRC"
 func_lists=()
 
 # Misc. log tooling
 logdo() {
-    echo -n "${1}..." 
+    echo -n "${1}..."
 }
-ok() { 
-    if [[ -z $1 ]]; then 
-        echo "ok" 
+ok() {
+    if [[ -z $1 ]]; then
+        echo "ok"
     else
         echo "$1"
-    fi 
+    fi
 }
 
 # Input file (Don't assume paths)
@@ -40,10 +41,10 @@ fi
 
 verify_file() {
     [[ ! -f $INPUT_FILE ]] && echo "File does not exist!" && exit 1
-    
+
     is_script() {
         logdo "Checking for signs of shell script"
-        
+
         first_line="${INPUT_CONTENT[0]:-}"
         second_line="${INPUT_CONTENT[1]:-}"
 
@@ -58,7 +59,7 @@ verify_file() {
 
     has_any_prefix() {
         hasPrefix=0
-        for line in ${INPUT_CONTENT[@]}; do
+        for line in "${INPUT_CONTENT[@]}"; do
             if [[ "$line" == $PREFIX* ]]; then
                 hasPrefix=1
                 break
@@ -77,11 +78,11 @@ verify_file() {
 
 echo "Using $(realpath $INPUT_FILE)."
 
-# Newlinw separated array of script contents
+# Newline separated array of script contents
 INPUT_CONTENT=()
 while IFS= read -r line; do
     INPUT_CONTENT+=("$line")
-done < "$INPUT_FILE"
+done <"$INPUT_FILE"
 
 # Find the first alphabet part of the commented line
 get_function_name() {
@@ -115,44 +116,58 @@ create_srcs() {
     write_srcs
 }
 
+# Source updater
+# If new sections found from main script, add to SRC
+# Otherwise, prompt to delete
 update_srcs() {
-    # Build a list of current function files
     existing_files=()
-    while IFS= read -r -d '' file; do
-        existing_files+=("$file")
-    done < <(find "$SPLITFILEDIR" -mindepth 1 -maxdepth 1 -type f -print0)
+
+    build_current_filelist() {
+        while IFS= read -r -d '' file; do
+            existing_files+=("$file")
+        done < <(find "$SPLITFILEDIR" -mindepth 1 -maxdepth 1 -type f -print0)
+    }
 
     # Track files that should exist after update
-    updated_files=()
+    headfile_tracked_paths=()
 
     # Populate func, since write_srcs is not called
-    record=0
-    while IFS= read -r line; do
-        if [[ $line == "${PREFIX} sourceable.list" ]]; then
-            record=1
-            continue
-        elif [[ $line == "${PREFIX} sourceable.list END" ]]; then
-            record=0
-            break
-        fi
+    get_head_pathdatas() {
+        local -i record=0
 
-        [[ $record -eq 1 ]] && func_lists+=("$line")
-    done < "$HEADFILE"
+        while IFS= read -r line; do
+            if [[ $line == "${PREFIX} sourceable.list" ]]; then
+                record=1
+                continue
+            elif [[ $line == "${PREFIX} sourceable.list END" ]]; then
+                record=0
+                break
+            fi
 
-    # Iterate over func_lists (these are the target functions with path)
-    for func in "${func_lists[@]}"; do
+            [[ $record -eq 1 ]] && func_lists+=("$line")
+        done <"$HEADFILE"
+    }
 
-        # Purify path from symbolic prefix, if present
+    get_head_pathdatas
+
+    purify_to_filepaths_for_array() {
+        local func_path
+        local func=$1
+
         func_path="${func#source }"
         func_path="${func_path#exec }"
         func_path="${func_path#eval }"
 
-        updated_files+=("$func_path")
+        # Normalise path
+        func_path="./${func_path#./}"
 
-        # Gather new content from INPUT_CONTENT to reference from (New)
-        func_name="$(basename "$func_path" .sh)" # Strip to only name
-        new_content=()
-        within_func=0
+        headfile_tracked_paths+=("$func_path")
+    }
+
+    get_function_content() {
+        local -n ptr_function_content=$1 # Will return the content of the function from arg
+        local -i within_func=0
+
         for line in "${INPUT_CONTENT[@]}"; do
             for token in "${anyInputToken[@]}"; do
                 if [[ "$line" == "${PREFIX}${token} $func_name" ]]; then
@@ -162,46 +177,68 @@ update_srcs() {
             done
 
             # Ending the function block
-            if [[ "$within_func" -eq 1 ]] && [[ "$line" == "$PREFIX "* ]] && [[ ! " ${anyInputToken[@]} " =~ " ${line#$PREFIX} " ]]; then
+            if [[ "$within_func" -eq 1 ]] && [[ "$line" == "$PREFIX "* ]]; then
                 within_func=0
             fi
 
-            [[ "$within_func" -eq 1 ]] && new_content+=("$line")
+            [[ "$within_func" -eq 1 ]] && ptr_function_content+=("$line")
         done
+
+    }
+
+    get_file_content() {
+        local -n ptr_file_content=$1
+        local file_path=$2
+
+        if [[ -f "$file_path" ]]; then
+            # Using loops for compatibility
+            while IFS= read -r line; do
+                ptr_file_content+=("$line")
+            done <"$file_path"
+        else
+            ptr_file_content=()
+        fi
+    }
+
+    build_current_filelist
+
+    # Iterate over func_lists (these are the target functions with path)
+    for func in "${func_lists[@]}"; do
+        purify_to_filepaths_for_array func
+
+        # Gather new content from INPUT_CONTENT to reference from (New)
+        func_name="$(basename "$func_path" .sh)" # Strip to only name
+        new_content=()
+
+        get_function_content new_content
 
         # Skip if function has no content
         [[ ${#new_content[@]} -eq 0 ]] && continue
 
+        old_content=()
+        get_file_content old_content "$func_path"
+
         # Overwrite, or create new file on difference
         if [[ ! -f "$func_path" ]] || ! cmp -s <(printf "%s\n" "${old_content[@]}") <(printf "%s\n" "${new_content[@]}"); then
-            printf "%s\n" "${new_content[@]}" > "$func_path"
+            printf "%s\n" "${new_content[@]}" >"$func_path"
             chmod +x "$func_path"
             echo "Updated: $func_path"
         fi
-
-
-        # Convert new content to string 
-        new_content_data=$(printf "%s\n" "${new_content[@]}")
-
-        # Overwriting time 
-        printf "%s\n" "${new_content[@]}" > "$func_path"
-        
-        echo "Updated: $func_path"
     done
 
     # Prompt before removing old files no longer present
     for f in "${existing_files[@]}"; do
-        if [[ ! " ${updated_files[*]} " =~ " $f " ]]; then
+        if [[ ! " ${headfile_tracked_paths[*]} " =~ " $f " ]]; then
             read -n1 -p "Obsolete file '$f' found. Remove? [y/N]: " ans
             echo
-            case "${ans,,}" in   # convert to lowercase
-                y)
-                    rm -f "$f"
-                    echo "Removed: $f"
-                    ;;
-                *)
-                    echo "Skipped: $f"
-                    ;;
+            case "${ans,,}" in # convert to lowercase
+            y)
+                rm -f "$f"
+                echo "Removed: $f"
+                ;;
+            *)
+                echo "Skipped: $f"
+                ;;
             esac
         fi
     done
@@ -228,32 +265,32 @@ write_srcs() {
             echo "Processing function: $function_name"
 
             # Open new output file
-            exec 3> "$output_file"
+            exec 3>"$output_file"
 
             cmd=""
             typeToken="$(get_type_token "$line")"
 
             case "$typeToken" in
-                $SRC_SYMBOL)
-                    cmd="source "
-                    ;;
-                    
-                $EXEC_SYMBOL)
-                    cmd="exec "
-                    ;;
-                
-                $EVAL_SYMBOL)
-                    cmd="eval "
-                    ;;
+            "$SRC_SYMBOL")
+                cmd="source "
+                ;;
 
-                $RUN_SYMBOL)
-                    cmd=""
-                    ;;
+            "$EXEC_SYMBOL")
+                cmd="exec "
+                ;;
 
-                *)
-                    echo "Unknown symbolic annotation flag ${typeToken}, defaulting to run."
-                    cmd=""
-                    ;;
+            "$EVAL_SYMBOL")
+                cmd="eval "
+                ;;
+
+            "$RUN_SYMBOL")
+                cmd=""
+                ;;
+
+            *)
+                echo "Unknown symbolic annotation flag ${typeToken}, defaulting to run."
+                cmd=""
+                ;;
             esac
 
             func_lists+=("${sourceable}${output_file}")
@@ -267,18 +304,17 @@ write_srcs() {
     [[ -n "$output_file" ]] && exec 3>&-
 }
 
-
 create_headfile() {
-    get_shebang
+    get_shebang INPUT_CONTENT
     if [[ "$shebang_line" != "" ]]; then
-        echo "$shebang_line" >> "$HEADFILE"
+        echo "$shebang_line" >>"$HEADFILE"
     fi
 
-    echo "${PREFIX} sourceable.list" >> "$HEADFILE"
+    echo "${PREFIX} sourceable.list" >>"$HEADFILE"
     for functions in "${func_lists[@]}"; do
-        echo "$functions" >> "$HEADFILE"
-    done    
-    echo "${PREFIX} sourceable.list END" >> "$HEADFILE"
+        echo "$functions" >>"$HEADFILE"
+    done
+    echo "${PREFIX} sourceable.list END" >>"$HEADFILE"
 
     chmod +x $HEADFILE
 }
@@ -290,11 +326,12 @@ update_headfile() {
     HEAD_DATAS=()
     while IFS= read -r line; do
         HEAD_DATAS+=("$line")
-    done < "$HEADFILE"
+    done <"$HEADFILE"
 
     # Find range to remove
-    rangeX=-1; rangeY=-1
-    for ((i=0; i < ${#HEAD_DATAS[@]}; i++)); do
+    rangeX=-1
+    rangeY=-1
+    for ((i = 0; i < ${#HEAD_DATAS[@]}; i++)); do
         if [[ "${HEAD_DATAS[$i]}" == "${PREFIX} sourceable.list" ]]; then
             rangeX="$i"
         elif [[ "${HEAD_DATAS[$i]}" == "${PREFIX} sourceable.list END" ]]; then
@@ -327,15 +364,15 @@ update_headfile() {
         )
     else
         echo "Source file is empty, so will the head file!"
-    fi    
+    fi
 
     if [[ ${#HEAD_DATAS[@]} -gt 0 ]]; then
         # Clean up file
-        : > "$HEADFILE"
+        : >"$HEADFILE"
 
         # Fill the new data to file
         for data in "${HEAD_DATAS[@]}"; do
-            echo "$data" >> "$HEADFILE"
+            echo "$data" >>"$HEADFILE"
         done
     fi
 }
@@ -344,7 +381,7 @@ verify_file
 
 if [[ ! -d "$SPLITFILEDIR" ]]; then
     create_srcs
-else 
+else
     update_srcs
 fi
 
@@ -354,4 +391,3 @@ if [[ ! -f "$HEADFILE" ]]; then
 else
     update_headfile
 fi
-

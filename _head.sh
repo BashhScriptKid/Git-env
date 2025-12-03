@@ -26,8 +26,6 @@
 ####  0. You just DO WHAT THE FUCK YOU WANT TO, as long as the original creator/author is credited.
 ##
 ##==============================================================================
-##
-## "#--" is for decompilation purposes; please do not remove those lines on master branch
 
 
 # Discard 'no-source warning', since running head already serves as a script subshell.
