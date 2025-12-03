@@ -39,7 +39,6 @@ readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 readonly MAIN_HISTORY_FILE="${HOME}/.git-env_hist"
 readonly DEFAULT_GIT_PATH="/usr/bin/git"
 
-
 #--|CONFIG_VARS
 #------------------------------------------------------------------------------
 # Global Variables
@@ -85,7 +84,6 @@ disable_history_expansion() {
     return 1
 }
 
-
 #--|LOGGER
 #------------------------------------------------------------------------------
 # Logging System
@@ -104,9 +102,9 @@ log() {
     # Parse flags
     while [[ $# -gt 1 ]]; do
         case "$1" in
-            n) skip_newline=true ;;
-            p) skip_prefix=true ;;
-            *) : ;; # Ignore unknown flags
+        n) skip_newline=true ;;
+        p) skip_prefix=true ;;
+        *) : ;; # Ignore unknown flags
         esac
         shift
     done
@@ -176,41 +174,41 @@ EOF
 process_arguments() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            "--help"|"-h"|"/?"|"/HELP"|"/H"|"/help"|"/h")
-                show_help
-                exit 0
-                ;;
-            "version"|"--version"|"-v"|"/VERSION"|"/version"|"/v")
-                show_version
-                exit 0
-                ;;
-            "--path"|"-p"|"/PATH"|"/P"|"/path"|"/p")
-                shift
-                if [[ -z "$1" ]]; then
-                    echo "Error: --path requires a directory argument"
-                    exit 1
-                elif [[ -f "$1" ]]; then
-                    echo "Error: Path must be a directory, not a file"
-                    exit 1
-                else
-                    TARGET_PATH="$1"
-                fi
-                ;;
-            "verbose"|"-V"|"--verbose"|"/VERBOSE"|"/verbose"|"/V")
-                DO_LOGGING=1
-                echo "Verbose logging enabled"
-                ;;
-            "skip-sourcing"|"--skip-sourcing"|"/SKIP-SOURCING")
-                echo "Tab completion sourcing disabled"
-                NO_SOURCING=1
-                ;;
-            "--no-header")
-                log "Restarting shell without header"
-                PRINT_HEADER=0
-                ;;
-            *)
-                echo "Warning: Unknown argument '$1' ignored"
-                ;;
+        "--help" | "-h" | "/?" | "/HELP" | "/H" | "/help" | "/h")
+            show_help
+            exit 0
+            ;;
+        "version" | "--version" | "-v" | "/VERSION" | "/version" | "/v")
+            show_version
+            exit 0
+            ;;
+        "--path" | "-p" | "/PATH" | "/P" | "/path" | "/p")
+            shift
+            if [[ -z "$1" ]]; then
+                echo "Error: --path requires a directory argument"
+                exit 1
+            elif [[ -f "$1" ]]; then
+                echo "Error: Path must be a directory, not a file"
+                exit 1
+            else
+                TARGET_PATH="$1"
+            fi
+            ;;
+        "verbose" | "-V" | "--verbose" | "/VERBOSE" | "/verbose" | "/V")
+            DO_LOGGING=1
+            echo "Verbose logging enabled"
+            ;;
+        "skip-sourcing" | "--skip-sourcing" | "/SKIP-SOURCING")
+            echo "Tab completion sourcing disabled"
+            NO_SOURCING=1
+            ;;
+        "--no-header")
+            log "Restarting shell without header"
+            PRINT_HEADER=0
+            ;;
+        *)
+            echo "Warning: Unknown argument '$1' ignored"
+            ;;
         esac
         shift
     done
@@ -263,7 +261,7 @@ setup_git_completion() {
 
     # Try common completion file locations
     if ! try_source_completion "/usr/share/git/completion/git-completion.bash" &&
-       ! try_source_completion "/etc/bash_completion.d/git"; then
+        ! try_source_completion "/etc/bash_completion.d/git"; then
         echo "Warning: Unable to find Git completion files"
     fi
     echo # Add spacer
@@ -308,7 +306,7 @@ setup_custom_tab_completion() {
         # Get remotes and check if line contains any
         local remotes
         remotes=$(git remote 2>/dev/null | tr '\n' '|')
-        remotes=${remotes%|}  # Remove trailing |
+        remotes=${remotes%|} # Remove trailing |
 
         [[ -n "$remotes" && "$line" =~ [[:space:]](${remotes})[[:space:]] ]]
     }
@@ -320,11 +318,11 @@ setup_custom_tab_completion() {
 
         # Find word boundaries
         local word_start=$point
-        while [[ $word_start -gt 0 && "${line:$((word_start-1)):1}" != " " ]]; do
+        while [[ $word_start -gt 0 && "${line:$((word_start - 1)):1}" != " " ]]; do
             ((word_start--))
         done
 
-        local current_word="${line:$word_start:$((point-word_start))}"
+        local current_word="${line:$word_start:$((point - word_start))}"
         local completions=("")
 
         # Handle different completion contexts
@@ -339,7 +337,7 @@ setup_custom_tab_completion() {
 
         else
             # Git command completion
-           # Git commands - comprehensive list
+            # Git commands - comprehensive list
             local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
             local script_commands="help exit lazygit openweb"
 
@@ -375,12 +373,17 @@ setup_custom_tab_completion() {
                 local branches
                 branches=$(git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u)
                 mapfile -t completions < <(compgen -W "$branches" -- "$current_word")
+            else
+                # File completions for anything else
+                local file_completions
+
+                file_completions=$(compgen -f -- "$current_word")
             fi
 
             ## Doesn't work within the else-if chain; keep this way for now
             # Append remotes with branch names
             local remotes=$(git remote 2>/dev/null | tr '\n' '|')
-            remotes=${remotes%|}  # Remove trailing |
+            remotes=${remotes%|} # Remove trailing |
             if [[ -n "$remotes" && "$line" =~ [[:space:]](${remotes})[[:space:]] && ! "$line" =~ openweb ]]; then
                 local branch_completion=$(git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u | tr '\n' ' ')
                 completions=$(compgen -W "${branch_completion}" -- "${current_word}")
@@ -536,12 +539,12 @@ open_repository_web() {
     log "Base URL: ${remote_url}"
 
     case "$page" in
-        "issues")            remote_url="${remote_url}/issues" ;;
-        "pr"|"pull-request") remote_url="${remote_url}/pulls" ;;
-        "wiki")              remote_url="${remote_url}/wiki" ;;
-        "settings")          remote_url="${remote_url}/settings" ;;
-        "")             : ;; # No page specified
-        *)              echo "Error: Unknown page '$page'" && return 1 ;;
+    "issues") remote_url="${remote_url}/issues" ;;
+    "pr" | "pull-request") remote_url="${remote_url}/pulls" ;;
+    "wiki") remote_url="${remote_url}/wiki" ;;
+    "settings") remote_url="${remote_url}/settings" ;;
+    "") : ;; # No page specified
+    *) echo "Error: Unknown page '$page'" && return 1 ;;
     esac
 
     # Open URL in default browser (cross-platform)
@@ -566,8 +569,7 @@ open_repository_web() {
 # Initialise keybinds
 # This is for non-core features that users can simply add.
 # Interactive mode only!
-initialise_keybinds()
-{
+initialise_keybinds() {
     # Don't initialise on non-interactive mode
     if [[ $- != *i* ]]; then
         return
@@ -579,13 +581,11 @@ initialise_keybinds()
 
     # This is for more advanced operations that require more than executing single-line commands.
 
-    f_lazygit()
-    {
+    f_lazygit() {
         if command -v lazygit >/dev/null 2>&1; then
             lazygit
         fi
     }
-
 
     ### Keybind setup
 
@@ -594,7 +594,6 @@ initialise_keybinds()
 
     # CTRL + G
     bind -x '"\C-g":f_lazygit'
-
 
 }
 
@@ -614,70 +613,70 @@ execute_command() {
     fi
 
     case "$cmd" in
-        "exit")
-            log "Exit command received"
-            return 24  # Special exit code
-            ;;
+    "exit")
+        log "Exit command received"
+        return 24 # Special exit code
+        ;;
 
-        "git"*)
-            echo "You're already in a Git shell!"
-            eval "${git_path}" "${cmd#git }"
+    "git"*)
+        echo "You're already in a Git shell!"
+        eval "${git_path}" "${cmd#git }"
+        last_exit_code=$?
+        [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
+        ;;
+
+    "lazygit")
+        if command -v lazygit >/dev/null 2>&1; then
+            echo "Starting LazyGit..."
+            lazygit
             last_exit_code=$?
-            [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
-            ;;
+        else
+            echo -e "\e[93m\e[1mError: LazyGit is not installed\e[0m"
+            last_exit_code=1
+        fi
+        ;;
 
-        "lazygit")
-            if command -v lazygit >/dev/null 2>&1; then
-                echo "Starting LazyGit..."
-                lazygit
-                last_exit_code=$?
-            else
-                echo -e "\e[93m\e[1mError: LazyGit is not installed\e[0m"
-                last_exit_code=1
-            fi
-            ;;
+    "openweb"*)
+        open_repository_web "${cmd#openweb }"
+        last_exit_code=$?
+        ;;
 
-        "openweb"*)
-            open_repository_web "${cmd#openweb }"
-            last_exit_code=$?
-            ;;
-
-        "help")
-            git help
-            echo -e "\n\e[1m\e[34mAdditional Git-env commands:\e[0m"
-            cat <<'EOF'
+    "help")
+        git help
+        echo -e "\n\e[1m\e[34mAdditional Git-env commands:\e[0m"
+        cat <<'EOF'
   openweb     Open repository in web browser
   lazygit     Launch LazyGit TUI (requires installation)
   >command    Execute shell command (prefix with >)
 EOF
-            last_exit_code=0
-            ;;
+        last_exit_code=0
+        ;;
 
-        \>*)
-            # Shell command execution (prefixed with >)
-            local shell_cmd="${cmd#>}"
-            shell_cmd="$(echo "${shell_cmd}" | xargs)" # Trim whitespace
+    \>*)
+        # Shell command execution (prefixed with >)
+        local shell_cmd="${cmd#>}"
+        shell_cmd="$(echo "${shell_cmd}" | xargs)" # Trim whitespace
 
-            if [[ -n "${shell_cmd}" ]]; then
-                log "Executing shell command: ${shell_cmd}"
-                eval "${shell_cmd}"
-                last_exit_code=$?
-                [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
-            fi
-            ;;
-
-        "")
-            # Empty command - do nothing
-            last_exit_code=0
-            ;;
-
-        *)
-            # Regular Git command
-            log "Executing Git command: ${git_path} ${cmd}"
-            eval "${git_path}" "${cmd}"
+        if [[ -n "${shell_cmd}" ]]; then
+            log "Executing shell command: ${shell_cmd}"
+            eval "${shell_cmd}"
             last_exit_code=$?
             [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
-            ;;
+        fi
+        ;;
+
+    "")
+        # Empty command - do nothing
+        last_exit_code=0
+        ;;
+
+    *)
+        # Regular Git command
+        log "Executing Git command: ${git_path} ${cmd}"
+        eval "${git_path}" "${cmd}"
+        last_exit_code=$?
+        [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
+        ;;
     esac
 
     return $last_exit_code
@@ -703,37 +702,36 @@ process_command_line() {
 
     while [[ ${#commands[@]} -gt 0 ]]; do
         local cmd="${commands[0]}"
-    commands=("${commands[@]:1}")  # drop first element
+        commands=("${commands[@]:1}") # drop first element
 
         case "$cmd" in
-            "&&")
-                # AND operator: execute next only if last succeeded
-                should_execute=$([[ $last_exit_code -eq 0 ]] && echo true || echo false)
-                log "AND operator: should_execute=${should_execute}"
-                ;;
-            "||")
-                # OR operator: execute next only if last failed
-                should_execute=$([[ $last_exit_code -ne 0 ]] && echo true || echo false)
-                log "OR operator: should_execute=${should_execute}"
-                ;;
-            ";")
-                # Sequential operator: always execute next
-                should_execute=true
-                log "Sequential operator: should_execute=${should_execute}"
-                ;;
-            *)
-                # Command execution
-                if [[ "${should_execute}" == true ]]; then
-                    cmd="$(echo "${cmd}" | xargs)" # Trim whitespace
-                    execute_command "${cmd}" "${git_path}"
-                    last_exit_code=$?
-                else
-                    log "Skipping command: ${cmd} (condition not met)"
-                fi
-                ;;
+        "&&")
+            # AND operator: execute next only if last succeeded
+            should_execute=$([[ $last_exit_code -eq 0 ]] && echo true || echo false)
+            log "AND operator: should_execute=${should_execute}"
+            ;;
+        "||")
+            # OR operator: execute next only if last failed
+            should_execute=$([[ $last_exit_code -ne 0 ]] && echo true || echo false)
+            log "OR operator: should_execute=${should_execute}"
+            ;;
+        ";")
+            # Sequential operator: always execute next
+            should_execute=true
+            log "Sequential operator: should_execute=${should_execute}"
+            ;;
+        *)
+            # Command execution
+            if [[ "${should_execute}" == true ]]; then
+                cmd="$(echo "${cmd}" | xargs)" # Trim whitespace
+                execute_command "${cmd}" "${git_path}"
+                last_exit_code=$?
+            else
+                log "Skipping command: ${cmd} (condition not met)"
+            fi
+            ;;
         esac
     done
-
 
     return $last_exit_code
 }
@@ -785,7 +783,7 @@ save_command_history() {
     fi
 
     log "Merging with main history file..."
-    if cat "$HISTFILE" >> "$HISTFILE_MAIN"; then
+    if cat "$HISTFILE" >>"$HISTFILE_MAIN"; then
         log p "ok."
     else
         log n p "failed."
@@ -926,8 +924,7 @@ handle_empty_command() {
 # Updater (GitHub Gist)
 #------------------------------------------------------------------------------
 
-Updater()
-{
+Updater() {
     if [[ ${CHECK_UPDATES} -ne 1 ]]; then
         log "Updater skipped (CHECK_UPDATES != 1)"
         return
@@ -962,7 +959,7 @@ Updater()
     fetch() {
         log "Fetching changelog from $CHANGELOG_URL"
         changelog_output=$(curl -s "${CHANGELOG_URL}")
-        version=$(head -n1 <<< "$changelog_output")
+        version=$(head -n1 <<<"$changelog_output")
         log "Fetched changelog, detected version: ${version:-unknown}"
     }
 
@@ -986,7 +983,7 @@ Updater()
             fi
         }
 
-        broken_version_check(){
+        broken_version_check() {
             if bash -n "$TEMP_FILE"; then
                 echo -ne "\e[1m\e[93m"
                 echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try updating and try again later?"
@@ -1015,7 +1012,7 @@ Updater()
         if curl -fL "$SCRIPT_URL" -o "$TEMP_FILE"; then
             log "Download complete ($TEMP_FILE)"
 
-            sanity_version_mismatch  || return 1
+            sanity_version_mismatch || return 1
             log "Version sanity check passed"
 
             broken_version_check || return 1
@@ -1031,7 +1028,7 @@ Updater()
             fi
 
             log "Overwriting script with new version"
-            cat "$TEMP_FILE" > "$SCRIPT_PATH" && rm -f "$TEMP_FILE"
+            cat "$TEMP_FILE" >"$SCRIPT_PATH" && rm -f "$TEMP_FILE"
 
             echo
             echo "Updater: update complete. Restarting..."
@@ -1141,7 +1138,6 @@ main() {
 
     # Save argument data in case of update / SIGINT
     ARG=("$@")
-
 
     # Core initialization
     check_git_installation
