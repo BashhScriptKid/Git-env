@@ -2,7 +2,9 @@
 (Name is not final; suggestion open)
 ## A pseudo-shell environment for Git
 
-> NOTE: The project currently only focuses on mono-master branch. I see no reason to modularise it further yet.
+
+> [!IMPORTANT]
+> The project currently only focuses on mono-master branch. I see no reason to modularise it further yet.
 
 ## Introduction
 This is a pseudo-shell environment for Git. It allows you to run Git commands in a ctl-shell-like environment.
