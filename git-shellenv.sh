@@ -930,7 +930,7 @@ Updater() {
         return
     fi
 
-    local UPDATER_URL='https://gist.githubusercontent.com/BashhScriptKid/ce5c1fdbd275430d1c5f444c9abdd0db/raw/'
+    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/'
     local SCRIPT_URL="${UPDATER_URL}git-shellenv.sh"
     local CHANGELOG_URL="${UPDATER_URL}le-changelog.txt"
 
