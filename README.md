@@ -13,6 +13,19 @@ This is something I've wrote in Bash from scratch out of frustration. This scrip
 
 This project is under a (not final) custom WTFPL license with attribution requirement.
 
+## Todo
+The current scope is getting it as complete as possible, and also have the convenience of lazygit.
+
+Local scope:
+- [] Implement new upstream updater
+- [] Add dirty branch marker support (and apply to prompt)
+- [] Improve tab completion support
+
+Lazygit porting scope:
+- [] Implement `reword`
+- [] Implement auto stashing
+- [] Implement other alias shortcuts
+
 ## Installation
 
 As of now, Git-env is a monolithic script that you can run directly from the command line.
@@ -26,6 +39,12 @@ curl 'https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master
 Globally:
 ```sh
 curl 'https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/git-shellenv.sh' >> /usr/bin/git-env
+```
+If you want to use it while developing the script, you can link the sh path to your local bin directory:
+```sh
+git clone https://github.com/BashhScriptKid/Git-env.git
+cd Git-env
+ln -s git-shellenv.sh ~/.local/bin/git-env
 ```
 
 Dependencies:
@@ -122,5 +141,12 @@ nothing to commit, working tree clean
 total 8
 -rw-r--r-- 1 user user  102 Mar 23 14:30 README.md
 -rwxr-xr-x 1 user user 3600 Mar 23 14:30 git-env.sh
+[.../awesome-repo/ (master)]Git> status && branch
+On branch master
+Your branch is up to date with 'origin/master'.
+
+nothing to commit, working tree clean
+* master
+  branch2
 [.../awesome-repo/ (master)]Git>
 ```
