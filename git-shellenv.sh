@@ -38,6 +38,8 @@ readonly RC_FILE="${HOME}/.git-envrc"
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 readonly MAIN_HISTORY_FILE="${HOME}/.git-env_hist"
 readonly DEFAULT_GIT_PATH="/usr/bin/git"
+readonly LOCALPATH="${HOME}/.local/share/git-env/"
+readonly REMOTE_LINK="https://github.com/BashhScriptKid/Git-env"
 
 #--|CONFIG_VARS
 #------------------------------------------------------------------------------
@@ -52,6 +54,8 @@ NOT_GitDir=0
 CHECK_UPDATES=1
 # shellcheck disable=SC2034
 readonly PROFESSIONAL_PERSONALITY=1
+
+RUNTIME_VERSION="$(cat "${LOCALPATH}"/ref.sha)(${GIT_ENV_VERSION})"
 
 # Runtime variables
 TARGET_PATH=""
@@ -71,6 +75,11 @@ check_git_installation() {
         echo "Error: Git is not installed or not in PATH."
         exit 1
     fi
+}
+
+get_commithash_ref() {
+    latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
+    echo "$latest_remote_sha" >>"${LOCALPATH}/ref.sha"
 }
 
 # Disable history expansion to prevent issues with ! characters
@@ -126,7 +135,7 @@ log() {
 # Display help information
 show_help() {
     cat <<EOF
-Git-env version ${GIT_ENV_VERSION}
+Git-env version ${RUNTIME_VERSION}
 
 A lightweight, interactive Git shell environment.
 Supports DOS/GNU/Unix argument formats.
@@ -152,7 +161,7 @@ EOF
 # Display version and about information
 show_version() {
     cat <<EOF
-Git-env version ${GIT_ENV_VERSION}
+Git-env version ${RUNTIME_VERSION}
 
 A ctl-like interface for Git,
 for when you don't want to keep typing 'git' in the terminal —
@@ -932,9 +941,9 @@ Updater() {
 
     local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/'
     local SCRIPT_URL="${UPDATER_URL}git-shellenv.sh"
-    local CHANGELOG_URL="${UPDATER_URL}le-changelog.txt"
 
-    local changelog_output
+    local latest_remote_sha
+    local local_sha
     local version
     local status
 
@@ -956,11 +965,31 @@ Updater() {
         log "Connection OK"
     }
 
-    fetch() {
-        log "Fetching changelog from $CHANGELOG_URL"
-        changelog_output=$(curl -s "${CHANGELOG_URL}")
-        version=$(head -n1 <<<"$changelog_output")
-        log "Fetched changelog, detected version: ${version:-unknown}"
+    compare_commithash() {
+        log "Fetching commit differences from $UPDATER_URL"
+
+        if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
+            echo "Oh wow you broke the updater system, congrats. Go update it manually; bailing out."
+            exit 1
+        fi
+
+        latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
+
+        local_sha="$(cat "${LOCALPATH}/ref.sha")"
+
+        # Actually compare
+        if [[ "$latest_remote_sha" == "$local_sha" ]]; then
+            echo "Updater: local and remote versions are the same."
+            log "local and remote versions are the same"
+            return 0
+        else
+            echo "Updater: local and remote versions differ."
+            echo "Local: $local_sha"
+            echo "Remote: $latest_remote_sha"
+            log "local and remote versions differ (${latest_remote_sha} != ${local_sha})"
+            return 1
+        fi
+
     }
 
     # shellcheck disable=SC2120
@@ -1042,16 +1071,37 @@ Updater() {
         fi
     }
 
+    commit_fetcher() {
+        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Git-env/compare/$local_sha...$latest_remote_sha")"
+
+        echo "$remote_json" |
+            awk '
+            /"message":/ {
+                sub(/.*"message": "/, "");
+                sub(/",?$/, "");
+                msg=$0;
+            }
+            /"name":/ {
+                sub(/.*"name": "/, "");
+                sub(/",?$/, "");
+                print "* " msg " — " $0;
+            }
+        '
+    }
+
     main_updater() {
         local response
 
         echo
         echo "New update is available!"
         echo
-        echo "${GIT_ENV_VERSION} -> ${changelog_output}"
+        echo "${RUNTIME_VERSION} -> ${latest_remote_sha}"
+        echo
+        echo "Changelogs:"
+        commit_fetcher | sed 's/^/  /' # Indent changelogs
         echo
 
-        log "Prompting user for update (current=$GIT_ENV_VERSION, new=$version)"
+        log "Prompting user for update (current=$RUNTIME_VERSION, new=$latest_remote_sha)"
         read -rp "Would you like to update now? (Y/N) " -n1 response
         echo
         if [[ ${response} =~ ^[Yy]$ ]]; then
@@ -1064,14 +1114,17 @@ Updater() {
 
     main_checker() {
         log "Running update check..."
-        connection_checker && fetch
+        connection_checker && compare_commithash
 
-        if [[ -n "$version" && "$GIT_ENV_VERSION" != "$version" ]]; then
-            log "Update available: $GIT_ENV_VERSION -> $version"
+        # Pipe compare_commithash return code
+        local status=$?
+        if [[ $status -eq 1 ]]; then
+            log "Update available"
             return 255
+        elif [[ $status -eq 0 ]]; then
+            log "No update available"
         else
-            log "No updates (current=$GIT_ENV_VERSION)"
-            return 0
+            log "Function returned unexpected status code."
         fi
     }
 
@@ -1141,6 +1194,12 @@ main() {
 
     # Core initialization
     check_git_installation
+
+    if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
+        log "Reference update commit hash not found, fetching latest (this may break if the script is run long after the file deletion)."
+        get_commithash_ref
+    fi
+
     setup_working_directory
 
     # Check for non-interactive mode
