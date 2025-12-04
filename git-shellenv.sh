@@ -55,7 +55,7 @@ CHECK_UPDATES=1
 # shellcheck disable=SC2034
 readonly PROFESSIONAL_PERSONALITY=1
 
-RUNTIME_VERSION="$(cat "${LOCALPATH}"/ref.sha)(${GIT_ENV_VERSION})"
+RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${GIT_ENV_VERSION})"
 
 # Runtime variables
 TARGET_PATH=""
@@ -77,9 +77,16 @@ check_git_installation() {
     fi
 }
 
+check_localpath() {
+    if [ ! -d "${LOCALPATH}" ]; then
+        echo "Error: Local path ${LOCALPATH} does not exist. Creating..."
+        mkdir -p "${LOCALPATH}"
+    fi
+}
+
 get_commithash_ref() {
     latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
-    echo "$latest_remote_sha" >>"${LOCALPATH}/ref.sha"
+    echo "$latest_remote_sha" >>"${LOCALPATH}ref.sha"
 }
 
 # Disable history expansion to prevent issues with ! characters
@@ -975,7 +982,7 @@ Updater() {
 
         latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
 
-        local_sha="$(cat "${LOCALPATH}/ref.sha")"
+        local_sha="$(cat "${LOCALPATH}ref.sha")"
 
         # Actually compare
         if [[ "$latest_remote_sha" == "$local_sha" ]]; then
@@ -1194,8 +1201,9 @@ main() {
 
     # Core initialization
     check_git_installation
+    check_localpath
 
-    if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
+    if [[ ! -f "${LOCALPATH}ref.sha" ]]; then
         log "Reference update commit hash not found, fetching latest (this may break if the script is run long after the file deletion)."
         get_commithash_ref
     fi
