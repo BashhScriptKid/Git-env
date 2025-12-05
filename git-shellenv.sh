@@ -63,6 +63,9 @@ GIT_PATH=${DEFAULT_GIT_PATH}
 HISTFILE=""
 LAST_DIR=""
 ARG=""
+REPO_IS_DIRTY=0
+REPO_IS_DIRTY_AND_STAGED=0
+REPO_STASH_DIRTY=0
 
 #--|SANITY_CHECKS
 #------------------------------------------------------------------------------
@@ -492,9 +495,30 @@ parse_git_branch() {
     branch_list=$(git branch 2>/dev/null) || return 1
 
     if [[ -n "${branch_list}" ]]; then
-        echo "${branch_list}" | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+        echo "${branch_list}" | sed -n 's/^\* //p'
     else
         return 1
+    fi
+}
+
+# Evaluate cleanliness
+dirty_check() {
+    if ! git diff --quiet; then
+        REPO_IS_DIRTY=1
+    else
+        REPO_IS_DIRTY=0
+    fi
+
+    if ! git diff --staged --quiet; then
+        REPO_IS_DIRTY_AND_STAGED=1
+    else
+        REPO_IS_DIRTY_AND_STAGED=0
+    fi
+
+    if git rev-parse --verify refs/stash >/dev/null; then
+        REPO_STASH_DIRTY=1
+    else
+        REPO_STASH_DIRTY=0
     fi
 }
 
@@ -908,22 +932,36 @@ EOF
 # Generate dynamic prompt
 generate_prompt() {
     if check_git_repository; then
-        # In Git repository
-        local repo_name branch_info subdir root_indicator
+        local top subdir repo_name branch_info root_indicator dirty_markers
 
-        repo_name=$(basename "$(git rev-parse --show-toplevel)" 2>/dev/null || echo "unknown")
+        # Resolve repository root and prefix safely
+        top=$(git rev-parse --show-toplevel 2>/dev/null)
+        subdir=$(git rev-parse --show-prefix 2>/dev/null)
+        repo_name=${top##*/}
+
+        # Add markers per dirty flag
+        dirty_markers="" # Reset first
+        if [[ ${REPO_IS_DIRTY} -eq 1 ]]; then
+            dirty_markers+="\e[91m*\e[0m"
+        fi
+        if [[ ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]]; then
+            dirty_markers+="\e[93m^\e[0m"
+        fi
+        if [[ ${REPO_STASH_DIRTY} -eq 1 ]]; then
+            dirty_markers+="\e[94m_\e[0m"
+        fi
+
+        # Normalize subdir (remove trailing slash)
+        subdir=${subdir%/}
+
+        # Compact root indicator
+        [[ "$(dirname "$PWD")" != "/" ]] && root_indicator=".../"
+
         branch_info=$(parse_git_branch)
-        subdir=$(git rev-parse --show-prefix 2>/dev/null | sed 's:/$::')
 
-        # Add root indicator if not in filesystem root
-        local curr_dir parent_dir
-        curr_dir=$(pwd -P)
-        parent_dir=$(dirname "$curr_dir")
-        [[ "$parent_dir" != "/" ]] && root_indicator=".../"
-
-        echo -e "\e[34m[\e[1m${root_indicator}${repo_name}/${subdir}\e[32m${branch_info}\e[0m\e[34m]Git>\e[0m "
+        # Final prompt
+        echo -e "\e[34m[\e[1m${root_indicator}${repo_name}/${subdir}\e[32m (${branch_info}${dirty_markers})\e[0m\e[34m]Git>\e[0m "
     else
-        # Not in Git repository
         echo -e "[\e[93m\e[1mN/A\e[0m]Git> "
     fi
 }
@@ -1144,6 +1182,7 @@ main_loop() {
     while true; do
         # Update repository status
         check_git_repository >/dev/null
+        dirty_check
 
         trap 'handle_interrupt' SIGINT
 
