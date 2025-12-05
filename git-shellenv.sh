@@ -963,13 +963,14 @@ generate_prompt() {
         # Final prompt
         echo -e "\e[34m[\e[1m${root_indicator}${repo_name}/${subdir}\e[32m (${branch_info}${dirty_markers})\e[0m\e[34m]Git>\e[0m "
     else
+        log "Repository no longer detected! Commands will stop working."
         echo -e "[\e[93m\e[1mN/A\e[0m]Git> "
     fi
 }
 
 # Default action when empty command is entered
 handle_empty_command() {
-    # Could display status here, but currently does nothing
+    # Could display status here (per GitSh default), but currently does nothing
     # display_git_status
     :
 }
