@@ -888,6 +888,10 @@ EOF
 
 # Handle Ctrl+C (SIGINT)
 handle_interrupt() {
+    # Ignore further SIGINT until we finish
+    trap : SIGINT
+    # Ensure terminal echo is on
+    stty echo
     echo -n
     exec "$0" --no-header "${ARG[@]}"
 }
