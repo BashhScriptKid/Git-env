@@ -1165,6 +1165,22 @@ Updater() {
     fi
 }
 
+do_update() {
+    SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+
+    if [[ -n "$GIT_ROOT" && "$SCRIPT_DIR" == "$GIT_ROOT" ]]; then
+        # Running from the repo root; skip auto-update
+        log "Updater skipped: running from Git-env repo itself."
+    else
+        # Optionally also check remote URL
+        REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Git-env ]]; then
+            Updater &
+        fi
+    fi
+}
+
 #--|MAIN
 #------------------------------------------------------------------------------
 # Main Program Loop
@@ -1186,7 +1202,7 @@ main_loop() {
         check_git_repository >/dev/null
         dirty_check
 
-        trap 'handle_interrupt' SIGINT
+        trap handle_interrupt SIGINT
 
         # Display prompt and read command
         if ! read -rep "$(generate_prompt)" cmd; then
@@ -1250,6 +1266,8 @@ main() {
 
     # Display startup information
     print_header
+
+    do_update
 
     # Enter main interactive loop
     main_loop
