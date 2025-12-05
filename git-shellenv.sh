@@ -52,6 +52,7 @@ INIT_CLEAR=0
 PRINT_HEADER=1
 NOT_GitDir=0
 CHECK_UPDATES=1
+NO_MARKERS=0
 # shellcheck disable=SC2034
 readonly PROFESSIONAL_PERSONALITY=1
 
@@ -941,14 +942,10 @@ generate_prompt() {
 
         # Add markers per dirty flag
         dirty_markers="" # Reset first
-        if [[ ${REPO_IS_DIRTY} -eq 1 ]]; then
-            dirty_markers+="\e[91m*\e[0m"
-        fi
-        if [[ ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]]; then
-            dirty_markers+="\e[93m^\e[0m"
-        fi
-        if [[ ${REPO_STASH_DIRTY} -eq 1 ]]; then
-            dirty_markers+="\e[94m_\e[0m"
+        if [[ ${NO_MARKERS} -ne 1 ]]; then
+            [[ ${REPO_IS_DIRTY}            -eq 1 ]] && dirty_markers+="\e[91m*\e[0m"
+            [[ ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]] && dirty_markers+="\e[93m^\e[0m"
+            [[ ${REPO_STASH_DIRTY}         -eq 1 ]] && dirty_markers+="\e[94m_\e[0m"
         fi
 
         # Normalize subdir (remove trailing slash)
