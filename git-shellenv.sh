@@ -1003,26 +1003,10 @@ Updater() {
     replacer() {
         local TEMP_FILE
 
-        sanity_version_mismatch() {
-            if ! grep -q "GIT_ENV_VERSION=\"${version}\"" "${TEMP_FILE}"; then
-                echo -ne "\e[1m\e[93m"
-                echo "Updater: version mismatch in downloaded file!"
-                echo "Expected: $version"
-                echo "If you are the user, please wait until it gets fixed."
-                echo "If you are the maintainer (Bashh), go fix that you forgetful bitch."
-                echo -ne "\e[0m"
-
-                grep -m1 GIT_ENV_VERSION "$TEMP_FILE"
-
-                rm -f "$TEMP_FILE"
-                return 1
-            fi
-        }
-
         broken_version_check() {
             if bash -n "$TEMP_FILE"; then
                 echo -ne "\e[1m\e[93m"
-                echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try updating and try again later?"
+                echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try again later?"
                 echo -ne "\e[0m"
 
                 rm -f "$TEMP_FILE"
@@ -1047,9 +1031,6 @@ Updater() {
         # Show progress, fail if error
         if curl -fL "$SCRIPT_URL" -o "$TEMP_FILE"; then
             log "Download complete ($TEMP_FILE)"
-
-            sanity_version_mismatch || return 1
-            log "Version sanity check passed"
 
             broken_version_check || return 1
             log "Functionality/syntax test returned 0"
@@ -1202,7 +1183,6 @@ main() {
     # Core initialization
     check_git_installation
     check_localpath
-
     if [[ ! -f "${LOCALPATH}ref.sha" ]]; then
         log "Reference update commit hash not found, fetching latest (this may break if the script is run long after the file deletion)."
         get_commithash_ref
