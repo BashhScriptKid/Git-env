@@ -17,7 +17,7 @@ This project is under a (not final) custom WTFPL license with attribution requir
 The current scope is getting it as complete as possible, and also have the convenience of lazygit.
 
 Local scope:
-- [ ] Implement new upstream updater
+- [X] Implement new upstream updater
 - [ ] Add dirty branch marker support (and apply to prompt)
 - [ ] Improve tab completion support
 
