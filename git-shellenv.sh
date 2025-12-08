@@ -99,7 +99,8 @@ disable_history_expansion() {
 }
 
 # Prevent script from being sourced
-(return 0 2>/dev/null) && test $inHead -ne 1 && {
+# shellcheck disable=SC2154
+(return 0 2>/dev/null) && test "$inHead" -ne 1 && {
     echo "PLEASE Don't source this script — run it directly with ./git-shell.sh"
     return 1
 }
