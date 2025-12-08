@@ -820,30 +820,6 @@ setup_command_history() {
     log "Session history will be saved to $HISTFILE"
 }
 
-# Save and merge command history
-save_command_history() {
-    log n "Saving command history..."
-
-    if history -w; then
-        log p "ok."
-    else
-        log p "failed."
-        return 1
-    fi
-
-    log "Merging with main history file..."
-    if cat "$HISTFILE" >"$HISTFILE"; then
-        log p "ok."
-    else
-        log n p "failed."
-        return 1
-    fi
-
-    # Clean up temporary file
-    [[ -f "$HISTFILE" ]] && rm "$HISTFILE"
-    log "Cleaned up session history file"
-}
-
 #--|RC_SETUP
 #------------------------------------------------------------------------------
 # RC File Management
@@ -915,7 +891,6 @@ handle_termination() {
 # Cleanup on normal exit
 cleanup_and_exit() {
     set +o history
-    save_command_history
     echo
     echo "Goodbye!"
     exit 0
