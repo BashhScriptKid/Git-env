@@ -41,7 +41,7 @@ readonly DEFAULT_GIT_PATH="/usr/bin/git"
 
 readonly LOCALPATH="${HOME}/.local/share/git-env/"
 readonly RC_FILE="${LOCALPATH}.git-envrc"
-readonly MAIN_HISTORY_FILE="${LOCALPATH}/.git-env_hist"
+readonly MAIN_HISTORY_FILE="${LOCALPATH}.git-env_hist"
 
 readonly REMOTE_LINK="https://github.com/BashhScriptKid/Git-env"
 
@@ -790,13 +790,15 @@ process_command_line() {
 # Initialize command history
 setup_command_history() {
     export HISTCONTROL=ignoredups:ignorespace
-    export HISTFILE_MAIN="$MAIN_HISTORY_FILE"
+    export HISTFILE="$MAIN_HISTORY_FILE"
     export HISTSIZE=1000
     export HISTFILESIZE=2000
 
-    # Create temporary history file for current session
-    HISTFILE=$(mktemp /tmp/git-env_hist.XXXXXXXX)
-    export HISTFILE
+    if [[ ! -f "$HISTFILE" ]]; then
+        echo "Creating main history file..."
+        touch "$HISTFILE"
+        chmod 600 "$HISTFILE"
+    fi
 
     # Disable history during setup
     set +o history
@@ -808,10 +810,11 @@ setup_command_history() {
     fi
 
     # Load main history file
-    if history -r "$HISTFILE_MAIN"; then
-        log "Loaded history from $HISTFILE_MAIN"
+    if history -r; then
+        log "Loaded history from $HISTFILE"
+        HISTFILE="$HISTFILE_TEMP"
     else
-        log "Could not load history from $HISTFILE_MAIN"
+        log "Could not load history from $HISTFILE"
     fi
 
     log "Session history will be saved to $HISTFILE"
@@ -829,7 +832,7 @@ save_command_history() {
     fi
 
     log "Merging with main history file..."
-    if cat "$HISTFILE" >>"$HISTFILE_MAIN"; then
+    if cat "$HISTFILE" >"$HISTFILE"; then
         log p "ok."
     else
         log n p "failed."
@@ -1195,13 +1198,6 @@ do_update() {
 main_loop() {
     local cmd exit_code
 
-    # Clear initial history anomaly
-    if [[ ${INIT_CLEAR} -eq 0 ]]; then
-        history -c
-        INIT_CLEAR=1
-        log "Cleared initial history entry"
-    fi
-
     while true; do
         # Update repository status
         check_git_repository >/dev/null
@@ -1262,6 +1258,13 @@ main() {
     # Setup components
     setup_git_completion
     setup_custom_tab_completion
+
+    # Clear initial history anomaly
+    if [[ ${INIT_CLEAR} -eq 0 ]]; then
+        history -c
+        INIT_CLEAR=1
+        log "Cleared initial history entry"
+    fi
     setup_command_history
     initialise_keybinds >/dev/null 2>&1 # It complains, but works
 
