@@ -1227,6 +1227,9 @@ main_loop() {
 #------------------------------------------------------------------------------
 
 main() {
+    # Source RC file here since this allows for maximum function overloading
+    setup_rc_file
+
     # Initial safety checks
     disable_history_expansion
 
@@ -1255,7 +1258,6 @@ main() {
     setup_git_completion
     setup_custom_tab_completion
     setup_command_history
-    setup_rc_file
     initialise_keybinds >/dev/null 2>&1 # It complains, but works
 
     # Setup signal handlers
