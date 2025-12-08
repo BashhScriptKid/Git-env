@@ -504,13 +504,13 @@ parse_git_branch() {
 
 # Evaluate cleanliness
 dirty_check() {
-    if ! git diff --quiet; then
+    if ! git diff --quiet >/dev/null; then
         REPO_IS_DIRTY=1
     else
         REPO_IS_DIRTY=0
     fi
 
-    if ! git diff --staged --quiet; then
+    if ! git diff --staged --quiet >/dev/null; then
         REPO_IS_DIRTY_AND_STAGED=1
     else
         REPO_IS_DIRTY_AND_STAGED=0
@@ -947,9 +947,9 @@ generate_prompt() {
         # Add markers per dirty flag
         dirty_markers="" # Reset first
         if [[ ${NO_MARKERS} -ne 1 ]]; then
-            [[ ${REPO_IS_DIRTY}            -eq 1 ]] && dirty_markers+="\e[91m*\e[0m"
+            [[ ${REPO_IS_DIRTY} -eq 1 ]] && dirty_markers+="\e[91m*\e[0m"
             [[ ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]] && dirty_markers+="\e[93m^\e[0m"
-            [[ ${REPO_STASH_DIRTY}         -eq 1 ]] && dirty_markers+="\e[94m_\e[0m"
+            [[ ${REPO_STASH_DIRTY} -eq 1 ]] && dirty_markers+="\e[94m_\e[0m"
         fi
 
         # Normalize subdir (remove trailing slash)
@@ -1222,7 +1222,6 @@ main_loop() {
         fi
     done
 }
-
 #------------------------------------------------------------------------------
 # Program Entry Point
 #------------------------------------------------------------------------------

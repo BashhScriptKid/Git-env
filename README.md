@@ -18,7 +18,7 @@ The current scope is getting it as complete as possible, and also have the conve
 
 Local scope:
 - [X] Implement new upstream updater
-- [ ] Add dirty branch marker support (and apply to prompt)
+- [X] Add dirty branch marker support (and apply to prompt)
 - [ ] Improve tab completion support
 
 Lazygit porting scope:
