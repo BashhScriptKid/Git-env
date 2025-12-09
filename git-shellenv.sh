@@ -741,7 +741,10 @@ process_command_line() {
     local IFS=$'\n'
     local commands
 
-    mapfile -t commands < <(echo "$input" | sed 's/\(&&\|;;\||\|;\)/\n&\n/g' | sed '/^$/d')
+    mapfile -t commands < <(echo "$input" | awk '{
+        gsub(/&&|\|\||;;|;/, "\n&\n")
+        print
+    }' | sed '/^$/d')
 
     local last_exit_code=0
     local should_execute=true
@@ -889,8 +892,8 @@ handle_termination() {
 
 # Cleanup on normal exit
 cleanup_and_exit() {
-    history -w && log "Successfully saved command history."
     set +o history
+    history -w && log "Successfully saved command history."
     echo
     echo "Goodbye!"
     exit 0
