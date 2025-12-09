@@ -150,7 +150,7 @@ show_help() {
     cat <<EOF
 Igitari version ${RUNTIME_VERSION}
 
-A lightweight, interactive Git shell environment.
+The lightweight and portable Git shell environment.
 Supports DOS/GNU/Unix argument formats.
 
 USAGE:
@@ -176,15 +176,20 @@ show_version() {
     cat <<EOF
 Igitari version ${RUNTIME_VERSION}
 
-A ctl-like interface for Git,
-for when you don't want to keep typing 'git' in the terminal —
-solving a problem that (mostly) doesn't exist.
+About:
+    A kindly powerful Git companion,
+    born from the simple desire to type 'git' less often.
 
-It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
+    Make Git approachable without sacrificing its power —
+    because you shouldn't fight your tools to do great work.
 
-Check out the repository: https://github.com/BashhScriptKid/igitari
+    Lightweight, portable, and almost dependency-free.
+    The Git shell that watches your back for silly mistakes.
 
-Written in Bash by BashhScriptKid
+    Repository: https://github.com/BashhScriptKid/igitari
+    License: AGPL-3.0-or-later
+
+    Crafted in Bash by BashhScriptKid
 EOF
     #'
 }
