@@ -812,7 +812,6 @@ setup_command_history() {
     # Load main history file
     if history -r; then
         log "Loaded history from $HISTFILE"
-        HISTFILE="$HISTFILE_TEMP"
     else
         log "Could not load history from $HISTFILE"
     fi
@@ -882,7 +881,7 @@ handle_interrupt() {
 
 # Handle termination signals
 handle_termination() {
-    save_command_history
+    history -w && log "Successfully saved command history."
     echo
     echo "Git-env terminated. Goodbye!"
     exit 130
@@ -890,6 +889,7 @@ handle_termination() {
 
 # Cleanup on normal exit
 cleanup_and_exit() {
+    history -w && log "Successfully saved command history."
     set +o history
     echo
     echo "Goodbye!"
