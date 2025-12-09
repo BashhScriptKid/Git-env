@@ -1,10 +1,10 @@
 #!/bin/bash -i
 
 ##==============================================================================
-## Git-Shell Environment
-## A ctl-like interface for Git operations
+## Igitari — A kindly powerful Git companion
+## Make Git approachable without sacrificing its power
 ##==============================================================================
-## Version: 2.9-i
+## Version: 3.0
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
 ## Copyright (C) 2025 BashhScriptKid
 ## SPDX-License-Identifier: AGPL-3.0-or-later
@@ -16,7 +16,7 @@
 ##
 ##   This program is distributed in the hope that it will be useful,
 ##   but WITHOUT ANY WARRANTY; without even the implied warranty of
-##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ##   GNU Affero General Public License for more details.
 ##
 ##   You should have received a copy of the GNU Affero General Public License
@@ -30,17 +30,17 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly GIT_ENV_VERSION="1.4-l"
+readonly IGITARI_VERSION="1.4-l"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
 readonly DEFAULT_GIT_PATH="/usr/bin/git"
 
-readonly LOCALPATH="${HOME}/.local/share/git-env/"
-readonly RC_FILE="${LOCALPATH}.git-envrc"
-readonly MAIN_HISTORY_FILE="${LOCALPATH}.git-env_hist"
+readonly LOCALPATH="${HOME}/.local/share/igitari/"
+readonly RC_FILE="${LOCALPATH}.igitari-rc"
+readonly MAIN_HISTORY_FILE="${LOCALPATH}.igitari_hist"
 
-readonly REMOTE_LINK="https://github.com/BashhScriptKid/Git-env"
+readonly REMOTE_LINK="https://github.com/BashhScriptKid/Igitari"
 
 #--|CONFIG_VARS
 #------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ NO_MARKERS=0
 # shellcheck disable=SC2034
 readonly PROFESSIONAL_PERSONALITY=1
 
-RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${GIT_ENV_VERSION})"
+RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${IGITARI_VERSION})"
 
 # Runtime variables
 TARGET_PATH=""
@@ -119,7 +119,7 @@ log() {
     local skip_newline=false
     local skip_prefix=false
 
-    prefix="Git-env_debug: [$(date +%T)] "
+    prefix="Igitari_debug: [$(date +%T)] "
 
     # Parse flags
     while [[ $# -gt 1 ]]; do
@@ -148,7 +148,7 @@ log() {
 # Display help information
 show_help() {
     cat <<EOF
-Git-env version ${RUNTIME_VERSION}
+Igitari version ${RUNTIME_VERSION}
 
 A lightweight, interactive Git shell environment.
 Supports DOS/GNU/Unix argument formats.
@@ -174,7 +174,7 @@ EOF
 # Display version and about information
 show_version() {
     cat <<EOF
-Git-env version ${RUNTIME_VERSION}
+Igitari version ${RUNTIME_VERSION}
 
 A ctl-like interface for Git,
 for when you don't want to keep typing 'git' in the terminal —
@@ -182,7 +182,7 @@ solving a problem that (mostly) doesn't exist.
 
 It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
 
-Check out the repository: https://github.com/BashhScriptKid/git-env
+Check out the repository: https://github.com/BashhScriptKid/igitari
 
 Written in Bash by BashhScriptKid
 EOF
@@ -291,7 +291,7 @@ setup_git_completion() {
     echo # Add spacer
 }
 
-# Advanced tab completion for Git-env
+# Advanced tab completion for Igitari
 setup_custom_tab_completion() {
     [[ ! -t 0 ]] && return # Only for interactive terminals
 
@@ -688,7 +688,7 @@ execute_command() {
 
     "help")
         git help
-        echo -e "\n\e[1m\e[34mAdditional Git-env commands:\e[0m"
+        echo -e "\n\e[1m\e[34mAdditional Igitari commands:\e[0m"
         cat <<'EOF'
   openweb     Open repository in web browser
   lazygit     Launch LazyGit TUI (requires installation)
@@ -844,15 +844,15 @@ setup_rc_file() {
         cat <<EOF
 Found GitSh configuration file!
 
-Would you like to copy it for use with Git-env?
-This will create a copy as .git-envrc without affecting your GitSh setup.
+Would you like to copy it for use with Igitari?
+This will create a copy as .igitari-rc without affecting your GitSh setup.
 
 Note: Functionality may not be 100% compatible with GitSh.
 EOF
         read -rp "Copy GitSh config? (y/n): " answer
 
         if [[ ${answer} =~ ^[Yy]$ ]]; then
-            echo "Copying .gitshrc to .git-envrc..."
+            echo "Copying .gitshrc to .igitari-rc..."
             if cp "$GITSH_RC_FILE" "$RC_FILE"; then
                 echo "Configuration copied successfully!"
                 NO_SOURCING=0
@@ -885,7 +885,7 @@ handle_interrupt() {
 handle_termination() {
     history -w && log "Successfully saved command history."
     echo
-    echo "Git-env terminated. Goodbye!"
+    echo "Igitari terminated. Goodbye!"
     exit 130
 }
 
@@ -971,7 +971,7 @@ Updater() {
         return
     fi
 
-    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/'
+    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Igitari/refs/heads/master/'
     local SCRIPT_URL="${UPDATER_URL}git-shellenv.sh"
 
     local latest_remote_sha
@@ -1085,7 +1085,7 @@ Updater() {
     }
 
     commit_fetcher() {
-        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Git-env/compare/$local_sha...$latest_remote_sha")"
+        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Igitari/compare/$local_sha...$latest_remote_sha")"
 
         echo "$remote_json" |
             awk '
@@ -1156,11 +1156,11 @@ do_update() {
 
     if [[ -n "$GIT_ROOT" && "$SCRIPT_DIR" == "$GIT_ROOT" ]]; then
         # Running from the repo root; skip auto-update
-        log "Updater skipped: running from Git-env repo itself."
+        log "Updater skipped: running from Igitari repo itself."
     else
         # Optionally also check remote URL
         REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Git-env ]]; then
+        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Igitari ]]; then
             Updater &
         fi
     fi
@@ -1194,7 +1194,7 @@ main_loop() {
             process_command_line "$cmd"
             exit_code=$?
             if [[ $exit_code -eq 24 ]]; then
-                echo "Exiting Git-env..."
+                echo "Exiting Igitari..."
                 break
             fi
         fi
