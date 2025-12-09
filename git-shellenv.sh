@@ -6,24 +6,21 @@
 ##==============================================================================
 ## Version: 2.9-i
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
-## SPDX-License-Identifier: WTFBYPL-1.0
-##   This is a custom license based on the WTFPL with attribution required.
-##   See full license text below.
+## Copyright (C) 2025 BashhScriptKid
+## SPDX-License-Identifier: AGPL-3.0-or-later
 ##
-####     DO WHAT THE FUCK YOU WANT TO WITH CREDIT PUBLIC LICENSE
-####                    Version 1, May 2025
-####
-#### Copyright (C) 2025 BashhScriptKid <contact@bashh.slmail.me>
-####
-#### Everyone is permitted to copy and distribute verbatim or modified
-#### copies of this license document, and changing it is allowed as long
-#### as the name is changed and original author is credited, excluding
-#### the work of this license.
-####
-####            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-####   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-####
-####  0. You just DO WHAT THE FUCK YOU WANT TO, as long as the original creator/author is credited.
+##   This program is free software: you can redistribute it and/or modify
+##   it under the terms of the GNU Affero General Public License as published
+##   by the Free Software Foundation, either version 3 of the License, or
+##   (at your option) any later version.
+##
+##   This program is distributed in the hope that it will be useful,
+##   but WITHOUT ANY WARRANTY; without even the implied warranty of
+##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+##   GNU Affero General Public License for more details.
+##
+##   You should have received a copy of the GNU Affero General Public License
+##   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ##
 ##==============================================================================
 ##
@@ -184,6 +181,8 @@ for when you don't want to keep typing 'git' in the terminal —
 solving a problem that (mostly) doesn't exist.
 
 It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
+
+Check out the repository: https://github.com/BashhScriptKid/git-env
 
 Written in Bash by BashhScriptKid
 EOF
