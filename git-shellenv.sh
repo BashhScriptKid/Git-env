@@ -214,10 +214,10 @@ process_arguments() {
         "--path" | "-p" | "/PATH" | "/P" | "/path" | "/p")
             shift
             if [[ -z "$1" ]]; then
-                echo "Error: --path requires a directory argument"
+                echo "Error: Please put a path after --path, like this: --path /path/to/directory/"
                 exit 1
             elif [[ -f "$1" ]]; then
-                echo "Error: Path must be a directory, not a file"
+                echo "Error: Hey! You're pointing to a file, not a directory!"
                 exit 1
             else
                 TARGET_PATH="$1"
@@ -225,10 +225,10 @@ process_arguments() {
             ;;
         "verbose" | "-V" | "--verbose" | "/VERBOSE" | "/verbose" | "/V")
             DO_LOGGING=1
-            echo "Verbose logging enabled"
+            echo "Verbose logging enabled. Debugging time! Or not."
             ;;
         "skip-sourcing" | "--skip-sourcing" | "/SKIP-SOURCING")
-            echo "Tab completion sourcing disabled"
+            echo "No tab completion? Sure, I guess :/"
             NO_SOURCING=1
             ;;
         "--no-header")
@@ -236,7 +236,7 @@ process_arguments() {
             PRINT_HEADER=0
             ;;
         *)
-            echo "Warning: Unknown argument '$1' ignored"
+            echo "Warning: I don't know what $1 is so I'll just ignore it."
             ;;
         esac
         shift
@@ -252,8 +252,8 @@ process_arguments() {
 setup_working_directory() {
     if [[ -n "${TARGET_PATH}" ]]; then
         LAST_DIR=$(pwd)
-        if ! cd "${TARGET_PATH}"; then
-            echo "Error: Cannot change to directory: ${TARGET_PATH}"
+        if ! cd "${TARGET_PATH}/"; then
+            echo "Error: I can't change the directory to ${TARGET_PATH} ; Are you sure this is accessible? (Does not exist or insufficient permissions)"
             exit 1
         fi
         # Set trap to restore original directory on exit
@@ -291,7 +291,7 @@ setup_git_completion() {
     # Try common completion file locations
     if ! try_source_completion "/usr/share/git/completion/git-completion.bash" &&
         ! try_source_completion "/etc/bash_completion.d/git"; then
-        echo "Warning: Unable to find Git completion files"
+        echo "Warning: I can't source any Git completion files, sorry! >.<"
     fi
     echo # Add spacer
 }
@@ -545,8 +545,8 @@ display_git_status() {
 check_git_repository() {
     if ! git rev-parse --git-dir >/dev/null 2>&1; then
         if [[ "${NOT_GitDir}" != "1" ]]; then
-            echo -e "\e[93m\e[1mWarning: Not in a Git repository."
-            echo -e "Type 'init' to create a new repository in this directory.\e[0m"
+            echo -e "\e[93m\e[1mWarning: You're not inside a git repository right now!"
+            echo -e "You have to either:\n Type 'init' to create a new repository here.\n Change directory to a real git repository. \e[0m"
             NOT_GitDir=1
         fi
         return 1
@@ -579,7 +579,7 @@ open_repository_web() {
     remote_url=$(git remote get-url "$remote" 2>/dev/null)
 
     if [[ -z "$remote_url" ]]; then
-        echo -e "\e[91m\e[1mError: Remote '$remote' not found.\e[0m"
+        echo -e "\e[91m\e[1mError: ...'$remote''s URL is empty?? See if it exists (simple type 'remote') \e[0m"
         echo "SYNTAX: openweb [remote] [issues|pr|pull-request|wiki|settings]"
         return 1
     fi
@@ -608,7 +608,7 @@ open_repository_web() {
         log "Opening with cmd (Windows)"
         cmd.exe /C start "" "$remote_url"
     else
-        echo -e "\e[91m\e[1mError: Unable to detect browser opener for this OS\e[0m"
+        echo -e "\e[91m\e[1mError: Eh?! What the heck is this OS? I can't find a way to open a browser in your system!\e[0m"
         return 1
     fi
 
@@ -669,7 +669,7 @@ execute_command() {
         ;;
 
     "git"*)
-        echo "You're already in a Git shell!"
+        echo "Do you even have to type 'git' in here? Sure."
         eval "${git_path}" "${cmd#git }"
         last_exit_code=$?
         [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
@@ -890,7 +890,7 @@ handle_interrupt() {
 handle_termination() {
     history -w && log "Successfully saved command history."
     echo
-    echo "Igitari terminated. Goodbye!"
+    echo "Igitari terminated."
     exit 130
 }
 
@@ -899,7 +899,7 @@ cleanup_and_exit() {
     set +o history
     history -w && log "Successfully saved command history."
     echo
-    echo "Goodbye!"
+    echo "Byee!"
     exit 0
 }
 
@@ -913,7 +913,7 @@ print_header() {
     [[ ${PRINT_HEADER} -eq 0 ]] && return
 
     cat <<EOF
-Entering Git shell. Press Ctrl+D or type 'exit' to quit.
+Entering Igitari (Hi!). Press Ctrl+D or type 'exit' to quit.
 Prefix commands with '>' to execute shell commands
 EOF
 
@@ -1006,7 +1006,8 @@ Updater() {
         log "Fetching commit differences from $UPDATER_URL"
 
         if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
-            echo "Oh wow you broke the updater system, congrats. Go update it manually; bailing out."
+            echo "Well I hit a trouble: The updater system is broken now! Surely you broke it, didn't you? Time to curl again from the repo."
+            echo "In case it is not your fault and wondering what happened: ref.sha is missing from ${LOCALPATH}, required for version comparison."
             exit 1
         fi
 
@@ -1016,11 +1017,9 @@ Updater() {
 
         # Actually compare
         if [[ "$latest_remote_sha" == "$local_sha" ]]; then
-            echo "Updater: local and remote versions are the same."
             log "local and remote versions are the same"
             return 0
         else
-            echo "Updater: local and remote versions differ."
             echo "Local: $local_sha"
             echo "Remote: $latest_remote_sha"
             log "local and remote versions differ (${latest_remote_sha} != ${local_sha})"
@@ -1036,7 +1035,7 @@ Updater() {
         broken_version_check() {
             if bash -n "$TEMP_FILE"; then
                 echo -ne "\e[1m\e[93m"
-                echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try again later?"
+                echo "This version is broken. Either you're using outdated Bash version or she made a mistake on writing. Try again later?"
                 echo -ne "\e[0m"
 
                 rm -f "$TEMP_FILE"
@@ -1045,7 +1044,7 @@ Updater() {
         }
 
         TEMP_FILE=$(mktemp /tmp/update_gitsh-XXXX.sh) || {
-            echo "Updater: failed to create temp file."
+            echo "Updater: failed to create temporary file! Proceeding further is not ideal."
             log "mktemp failed, cannot continue update"
             return 1
         }
@@ -1068,7 +1067,7 @@ Updater() {
             (chmod +x "$TEMP_FILE" && bash -n "$TEMP_FILE") || (echo "Script check failed (see above)." && return 1)
 
             if [[ ! -s "$TEMP_FILE" ]]; then
-                echo "Updater: downloaded file is empty, aborting."
+                echo "Updater: Huh, the update file is empty. Weird. I'm gonna…abort it real quick."
                 log "Downloaded file empty, aborting update"
                 rm -f "$TEMP_FILE"
                 return 1
@@ -1078,7 +1077,7 @@ Updater() {
             cat "$TEMP_FILE" >"$SCRIPT_PATH" && rm -f "$TEMP_FILE"
 
             echo
-            echo "Updater: update complete. Restarting..."
+            echo "Updater: update complete! Restarting..."
             log "Exec restart: $SCRIPT_PATH $*"
             exec "$SCRIPT_PATH" "${ARG[@]}"
         else
