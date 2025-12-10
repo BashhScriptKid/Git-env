@@ -1,29 +1,26 @@
 #!/bin/bash -i
 
 ##==============================================================================
-## Git-Shell Environment
-## A ctl-like interface for Git operations
+## Igitari — A kindly powerful Git companion
+## Make Git approachable without sacrificing its power
 ##==============================================================================
-## Version: 2.9-i
+## Version: 3.0
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
-## SPDX-License-Identifier: WTFBYPL-1.0
-##   This is a custom license based on the WTFPL with attribution required.
-##   See full license text below.
+## Copyright (C) 2025 BashhScriptKid
+## SPDX-License-Identifier: AGPL-3.0-or-later
 ##
-####     DO WHAT THE FUCK YOU WANT TO WITH CREDIT PUBLIC LICENSE
-####                    Version 1, May 2025
-####
-#### Copyright (C) 2025 BashhScriptKid <contact@bashh.slmail.me>
-####
-#### Everyone is permitted to copy and distribute verbatim or modified
-#### copies of this license document, and changing it is allowed as long
-#### as the name is changed and original author is credited, excluding
-#### the work of this license.
-####
-####            DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
-####   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
-####
-####  0. You just DO WHAT THE FUCK YOU WANT TO, as long as the original creator/author is credited.
+##   This program is free software: you can redistribute it and/or modify
+##   it under the terms of the GNU Affero General Public License as published
+##   by the Free Software Foundation, either version 3 of the License, or
+##   (at your option) any later version.
+##
+##   This program is distributed in the hope that it will be useful,
+##   but WITHOUT ANY WARRANTY; without even the implied warranty of
+##   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+##   GNU Affero General Public License for more details.
+##
+##   You should have received a copy of the GNU Affero General Public License
+##   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 ##
 ##==============================================================================
 ##
@@ -33,17 +30,17 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly GIT_ENV_VERSION="1.4-l"
+readonly IGITARI_VERSION="1.4-l"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
 readonly DEFAULT_GIT_PATH="/usr/bin/git"
 
-readonly LOCALPATH="${HOME}/.local/share/git-env/"
-readonly RC_FILE="${LOCALPATH}.git-envrc"
-readonly MAIN_HISTORY_FILE="${LOCALPATH}.git-env_hist"
+readonly LOCALPATH="${HOME}/.local/share/igitari/"
+readonly RC_FILE="${LOCALPATH}.igitari-rc"
+readonly MAIN_HISTORY_FILE="${LOCALPATH}.igitari_hist"
 
-readonly REMOTE_LINK="https://github.com/BashhScriptKid/Git-env"
+readonly REMOTE_LINK="https://github.com/BashhScriptKid/Igitari"
 
 #--|CONFIG_VARS
 #------------------------------------------------------------------------------
@@ -57,10 +54,8 @@ PRINT_HEADER=1
 NOT_GitDir=0
 CHECK_UPDATES=1
 NO_MARKERS=0
-# shellcheck disable=SC2034
-readonly PROFESSIONAL_PERSONALITY=1
 
-RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${GIT_ENV_VERSION})"
+RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${IGITARI_VERSION})"
 
 # Runtime variables
 TARGET_PATH=""
@@ -122,7 +117,7 @@ log() {
     local skip_newline=false
     local skip_prefix=false
 
-    prefix="Git-env_debug: [$(date +%T)] "
+    prefix="Igitari_debug: [$(date +%T)] "
 
     # Parse flags
     while [[ $# -gt 1 ]]; do
@@ -151,9 +146,9 @@ log() {
 # Display help information
 show_help() {
     cat <<EOF
-Git-env version ${RUNTIME_VERSION}
+Igitari version ${RUNTIME_VERSION}
 
-A lightweight, interactive Git shell environment.
+The lightweight and portable Git shell environment.
 Supports DOS/GNU/Unix argument formats.
 
 USAGE:
@@ -177,15 +172,22 @@ EOF
 # Display version and about information
 show_version() {
     cat <<EOF
-Git-env version ${RUNTIME_VERSION}
+Igitari version ${RUNTIME_VERSION}
 
-A ctl-like interface for Git,
-for when you don't want to keep typing 'git' in the terminal —
-solving a problem that (mostly) doesn't exist.
+About:
+    A kindly powerful Git companion,
+    born from the simple desire to type 'git' less often.
 
-It's an almost-no-dependency, lightweight, and flexible alternative to gitsh.
+    Make Git approachable without sacrificing its power —
+    because you shouldn't fight your tools to do great work.
 
-Written in Bash by BashhScriptKid
+    Lightweight, portable, and almost dependency-free.
+    The Git shell that watches your back for silly mistakes.
+
+    Repository: https://github.com/BashhScriptKid/igitari
+    License: AGPL-3.0-or-later
+
+    Crafted in Bash by BashhScriptKid
 EOF
     #'
 }
@@ -210,10 +212,10 @@ process_arguments() {
         "--path" | "-p" | "/PATH" | "/P" | "/path" | "/p")
             shift
             if [[ -z "$1" ]]; then
-                echo "Error: --path requires a directory argument"
+                echo "Error: Please put a path after --path, like this: --path /path/to/directory/"
                 exit 1
             elif [[ -f "$1" ]]; then
-                echo "Error: Path must be a directory, not a file"
+                echo "Error: Hey! You're pointing to a file, not a directory!"
                 exit 1
             else
                 TARGET_PATH="$1"
@@ -221,10 +223,10 @@ process_arguments() {
             ;;
         "verbose" | "-V" | "--verbose" | "/VERBOSE" | "/verbose" | "/V")
             DO_LOGGING=1
-            echo "Verbose logging enabled"
+            echo "Verbose logging enabled. Debugging time! Or not."
             ;;
         "skip-sourcing" | "--skip-sourcing" | "/SKIP-SOURCING")
-            echo "Tab completion sourcing disabled"
+            echo "No tab completion? Sure, I guess :/"
             NO_SOURCING=1
             ;;
         "--no-header")
@@ -232,7 +234,7 @@ process_arguments() {
             PRINT_HEADER=0
             ;;
         *)
-            echo "Warning: Unknown argument '$1' ignored"
+            echo "Warning: I don't know what $1 is so I'll just ignore it."
             ;;
         esac
         shift
@@ -248,8 +250,8 @@ process_arguments() {
 setup_working_directory() {
     if [[ -n "${TARGET_PATH}" ]]; then
         LAST_DIR=$(pwd)
-        if ! cd "${TARGET_PATH}"; then
-            echo "Error: Cannot change to directory: ${TARGET_PATH}"
+        if ! cd "${TARGET_PATH}/"; then
+            echo "Error: I can't change the directory to ${TARGET_PATH} ; Are you sure this is accessible? (Does not exist or insufficient permissions)"
             exit 1
         fi
         # Set trap to restore original directory on exit
@@ -287,12 +289,12 @@ setup_git_completion() {
     # Try common completion file locations
     if ! try_source_completion "/usr/share/git/completion/git-completion.bash" &&
         ! try_source_completion "/etc/bash_completion.d/git"; then
-        echo "Warning: Unable to find Git completion files"
+        echo "Warning: I can't source any Git completion files, sorry! >.<"
     fi
     echo # Add spacer
 }
 
-# Advanced tab completion for Git-env
+# Advanced tab completion for Igitari
 setup_custom_tab_completion() {
     [[ ! -t 0 ]] && return # Only for interactive terminals
 
@@ -541,8 +543,8 @@ display_git_status() {
 check_git_repository() {
     if ! git rev-parse --git-dir >/dev/null 2>&1; then
         if [[ "${NOT_GitDir}" != "1" ]]; then
-            echo -e "\e[93m\e[1mWarning: Not in a Git repository."
-            echo -e "Type 'init' to create a new repository in this directory.\e[0m"
+            echo -e "\e[93m\e[1mWarning: You're not inside a git repository right now!"
+            echo -e "You have to either:\n Type 'init' to create a new repository here.\n Change directory to a real git repository. \e[0m"
             NOT_GitDir=1
         fi
         return 1
@@ -575,7 +577,7 @@ open_repository_web() {
     remote_url=$(git remote get-url "$remote" 2>/dev/null)
 
     if [[ -z "$remote_url" ]]; then
-        echo -e "\e[91m\e[1mError: Remote '$remote' not found.\e[0m"
+        echo -e "\e[91m\e[1mError: ...'$remote''s URL is empty?? See if it exists (simple type 'remote') \e[0m"
         echo "SYNTAX: openweb [remote] [issues|pr|pull-request|wiki|settings]"
         return 1
     fi
@@ -604,7 +606,7 @@ open_repository_web() {
         log "Opening with cmd (Windows)"
         cmd.exe /C start "" "$remote_url"
     else
-        echo -e "\e[91m\e[1mError: Unable to detect browser opener for this OS\e[0m"
+        echo -e "\e[91m\e[1mError: Eh?! What the heck is this OS? I can't find a way to open a browser in your system!\e[0m"
         return 1
     fi
 
@@ -665,7 +667,7 @@ execute_command() {
         ;;
 
     "git"*)
-        echo "You're already in a Git shell!"
+        echo "Do you even have to type 'git' in here? Sure."
         eval "${git_path}" "${cmd#git }"
         last_exit_code=$?
         [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
@@ -689,7 +691,7 @@ execute_command() {
 
     "help")
         git help
-        echo -e "\n\e[1m\e[34mAdditional Git-env commands:\e[0m"
+        echo -e "\n\e[1m\e[34mAdditional Igitari commands:\e[0m"
         cat <<'EOF'
   openweb     Open repository in web browser
   lazygit     Launch LazyGit TUI (requires installation)
@@ -845,15 +847,15 @@ setup_rc_file() {
         cat <<EOF
 Found GitSh configuration file!
 
-Would you like to copy it for use with Git-env?
-This will create a copy as .git-envrc without affecting your GitSh setup.
+Would you like to copy it for use with Igitari?
+This will create a copy as .igitari-rc without affecting your GitSh setup.
 
 Note: Functionality may not be 100% compatible with GitSh.
 EOF
         read -rp "Copy GitSh config? (y/n): " answer
 
         if [[ ${answer} =~ ^[Yy]$ ]]; then
-            echo "Copying .gitshrc to .git-envrc..."
+            echo "Copying .gitshrc to .igitari-rc..."
             if cp "$GITSH_RC_FILE" "$RC_FILE"; then
                 echo "Configuration copied successfully!"
                 NO_SOURCING=0
@@ -886,7 +888,7 @@ handle_interrupt() {
 handle_termination() {
     history -w && log "Successfully saved command history."
     echo
-    echo "Git-env terminated. Goodbye!"
+    echo "Igitari terminated."
     exit 130
 }
 
@@ -895,7 +897,7 @@ cleanup_and_exit() {
     set +o history
     history -w && log "Successfully saved command history."
     echo
-    echo "Goodbye!"
+    echo "Byee!"
     exit 0
 }
 
@@ -909,7 +911,7 @@ print_header() {
     [[ ${PRINT_HEADER} -eq 0 ]] && return
 
     cat <<EOF
-Entering Git shell. Press Ctrl+D or type 'exit' to quit.
+Entering Igitari (Hi!). Press Ctrl+D or type 'exit' to quit.
 Prefix commands with '>' to execute shell commands
 EOF
 
@@ -972,7 +974,7 @@ Updater() {
         return
     fi
 
-    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/'
+    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Igitari/refs/heads/master/'
     local SCRIPT_URL="${UPDATER_URL}git-shellenv.sh"
 
     local latest_remote_sha
@@ -1002,7 +1004,8 @@ Updater() {
         log "Fetching commit differences from $UPDATER_URL"
 
         if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
-            echo "Oh wow you broke the updater system, congrats. Go update it manually; bailing out."
+            echo "Well I hit a trouble: The updater system is broken now! Surely you broke it, didn't you? Time to curl again from the repo."
+            echo "In case it is not your fault and wondering what happened: ref.sha is missing from ${LOCALPATH}, required for version comparison."
             exit 1
         fi
 
@@ -1012,11 +1015,9 @@ Updater() {
 
         # Actually compare
         if [[ "$latest_remote_sha" == "$local_sha" ]]; then
-            echo "Updater: local and remote versions are the same."
             log "local and remote versions are the same"
             return 0
         else
-            echo "Updater: local and remote versions differ."
             echo "Local: $local_sha"
             echo "Remote: $latest_remote_sha"
             log "local and remote versions differ (${latest_remote_sha} != ${local_sha})"
@@ -1032,7 +1033,7 @@ Updater() {
         broken_version_check() {
             if bash -n "$TEMP_FILE"; then
                 echo -ne "\e[1m\e[93m"
-                echo "This version is broken. Either you're using outdated Bash version or I made a mistake on writing. Try again later?"
+                echo "This version is broken. Either you're using outdated Bash version or she made a mistake on writing. Try again later?"
                 echo -ne "\e[0m"
 
                 rm -f "$TEMP_FILE"
@@ -1041,7 +1042,7 @@ Updater() {
         }
 
         TEMP_FILE=$(mktemp /tmp/update_gitsh-XXXX.sh) || {
-            echo "Updater: failed to create temp file."
+            echo "Updater: failed to create temporary file! Proceeding further is not ideal."
             log "mktemp failed, cannot continue update"
             return 1
         }
@@ -1064,7 +1065,7 @@ Updater() {
             (chmod +x "$TEMP_FILE" && bash -n "$TEMP_FILE") || (echo "Script check failed (see above)." && return 1)
 
             if [[ ! -s "$TEMP_FILE" ]]; then
-                echo "Updater: downloaded file is empty, aborting."
+                echo "Updater: Huh, the update file is empty. Weird. I'm gonna…abort it real quick."
                 log "Downloaded file empty, aborting update"
                 rm -f "$TEMP_FILE"
                 return 1
@@ -1074,7 +1075,7 @@ Updater() {
             cat "$TEMP_FILE" >"$SCRIPT_PATH" && rm -f "$TEMP_FILE"
 
             echo
-            echo "Updater: update complete. Restarting..."
+            echo "Updater: update complete! Restarting..."
             log "Exec restart: $SCRIPT_PATH $*"
             exec "$SCRIPT_PATH" "${ARG[@]}"
         else
@@ -1086,7 +1087,7 @@ Updater() {
     }
 
     commit_fetcher() {
-        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Git-env/compare/$local_sha...$latest_remote_sha")"
+        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Igitari/compare/$local_sha...$latest_remote_sha")"
 
         echo "$remote_json" |
             awk '
@@ -1157,11 +1158,11 @@ do_update() {
 
     if [[ -n "$GIT_ROOT" && "$SCRIPT_DIR" == "$GIT_ROOT" ]]; then
         # Running from the repo root; skip auto-update
-        log "Updater skipped: running from Git-env repo itself."
+        log "Updater skipped: running from Igitari repo itself."
     else
         # Optionally also check remote URL
         REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Git-env ]]; then
+        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Igitari ]]; then
             Updater &
         fi
     fi
@@ -1195,7 +1196,7 @@ main_loop() {
             process_command_line "$cmd"
             exit_code=$?
             if [[ $exit_code -eq 24 ]]; then
-                echo "Exiting Git-env..."
+                echo "Exiting Igitari..."
                 break
             fi
         fi

@@ -1,152 +1,150 @@
-# Git-env
-(Name is not final; suggestion open)
-## A pseudo-shell environment for Git
-
+# Igitari
+*A kindly powerful Git companion*
 
 > [!IMPORTANT]
 > The project currently only focuses on mono-master branch. I see no reason to modularise it further yet.
 
 ## Introduction
-This is a pseudo-shell environment for Git. It allows you to run Git commands in a ctl-shell-like environment.
+Igitari is a Git shell companion born from the simple desire to type 'git' less often. It's designed to make Git approachable without sacrificing its power — because you shouldn't have to fight your tools to do great work.
 
-This is something I've wrote in Bash from scratch out of frustration. This script tries to avoid as many dependencies as possible. It is designed to be as lightweight, and flexible as possible.
+Written in Bash from scratch, Igitari tries to avoid as many dependencies as possible. It is lightweight, portable, and flexible, with a philosophy of being "kindly powerful": helping you explore Git's capabilities while watching your back.
 
-This project is under a (not final) custom WTFPL license with attribution requirement.
+This project is licensed under AGPL-3.0-or-later.
 
-## Todo
-The current scope is getting it as complete as possible, and also have the convenience of lazygit.
+## Philosophy: Kindly Powerful
+Igitari aims to:
+- **Reduce friction** in daily Git workflows
+- **Provide safety nets** for common pitfalls (like detached HEAD mode)
+- **Stays out of your way** when you know what you're doing
+- **Remain lightweight** and dependency-free
 
-Local scope:
-- [X] Implement new upstream updater
-- [X] Add dirty branch marker support (and apply to prompt)
-- [ ] Improve tab completion support
 
-Lazygit porting scope:
-- [ ] Implement `reword`
-- [ ] Implement auto stashing
-- [ ] Implement other alias shortcuts
+## Features
+- Interactive Git shell with intelligent tab completion
+- Dynamic prompt:
+  - Branch name
+  - Repository status
+  - Dirty state markers
+- Shell command execution (prefix with `>`)
+- Operator support (`&&`, `||`, `;`)
+- LazyGit integration (Ctrl+G when available)
+- Web repository opening (`openweb` command)
+- Self-updating system
+- Cross-platform (Linux, macOS, Windows WSL)
+
+> [!WARNING]
+> This script is mainly tested on Linux.
+> If you see any discrepancies when using it on other platforms, please report in the issues tab.
 
 ## Installation
 
-As of now, Git-env is a monolithic script that you can run directly from the command line.
-Modular repository is planned, but only after clear sign of interest from the community. (you can get started by finishing the pseudo-assembler)
-
-### You can install by simply running the following command:
-Locally:
+### Quick Install
 ```sh
-curl 'https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/git-shellenv.sh' >> /usr/local/bin/git-env
-```
-Globally:
-```sh
-curl 'https://raw.githubusercontent.com/BashhScriptKid/Git-env/refs/heads/master/git-shellenv.sh' >> /usr/bin/git-env
-```
-If you want to use it while developing the script, you can link the sh path to your local bin directory:
-```sh
-git clone https://github.com/BashhScriptKid/Git-env.git
-cd Git-env
-ln -s git-shellenv.sh ~/.local/bin/git-env
+curl -L https://github.com/BashhScriptKid/igitari/raw/master/igitari.sh -o ~/.local/bin/igitari
+chmod +x ~/.local/bin/igitari
 ```
 
-Dependencies:
+### Development Install
+```sh
+git clone https://github.com/BashhScriptKid/igitari.git
+cd igitari
+ln -s igitari.sh ~/.local/bin/igitari
+```
+
+### Global Install
+```sh
+sudo curl -L https://github.com/BashhScriptKid/igitari/raw/master/igitari.sh -o /usr/bin/igitari
+sudo chmod +x /usr/bin/igitari
+```
+
+### Dependencies
+**Required:**
 - Git
 - Bash 4+
 - GNU Coreutils
 
-Optional Dependencies:
-- Lazygit
-- gh
-
-## Uninstallation
-Local:
-```sh
-rm /usr/local/bin/git-env
-```
-Global:
-```sh
-rm /usr/bin/git-env
-```
+**Optional:**
+- Lazygit (for TUI integration)
 
 ## Usage
-You can use Git-env by running the following command:
+Start Igitari:
 ```sh
-git-env
+igitari
 ```
 
-To get started with supported arguments, run the following command:
+Get help:
 ```sh
-git-env -h
+igitari -h
 ```
 
-To start Git-env with a path (without cd first), run the following command:
+Start in a specific directory:
 ```sh
-git-env -P /path/to/repo
+igitari -p /path/to/repo
 ```
 
-Debugging? Use this flag:
+Enable verbose logging:
 ```sh
-git-env --debug
+igitari --verbose
 ```
+
 ---
-Upon entering, you should see a prompt like this:
+
+Upon entering, you'll see:
 ```
-Entering Git shell. Press Ctrl+D or type 'exit' to quit.
+Entering Igitari (Hi!). Press Ctrl+D or type 'exit' to quit.
 Prefix commands with '>' to execute shell commands
 Press Ctrl+G to launch LazyGit
 
-[.../awesome-repo/ (master)]Git>
-
+[.../awesome-repo/ (master*)]igitari>
 ```
 
-If you see this prompt:
-```
-[N/A]Git>
-```
-Then it means you're not in a Git repository. Restart with the -P flag or cd to a real repository first, or get started with `git init`.
+The prompt shows:
+- Repository path (compressed for readability)
+- Current branch
+- Status markers: `*` (unstaged), `^` (staged), `_` (stash exists)
 
-You can simply run git commands without typing git:
+### Basic Usage
+Run Git commands without typing `git`:
 ```
-[.../awesome-repo/ (master)]Git> status
+[.../awesome-repo/ (master)]igitari> status
 On branch master
 Your branch is up to date with 'origin/master'.
 
 nothing to commit, working tree clean
-[.../awesome-repo/ (master)]Git>
 ```
 
-Although, it wouldn't mind if you already typed git:
+Run shell commands (prefix with `>`):
 ```
-[.../awesome-repo/ (master)]Git> git status
-You're already in a Git shell!
-On branch master
-Your branch is up to date with 'origin/master'.
-
-nothing to commit, working tree clean
-[.../awesome-repo/ (master)]Git>
+[.../awesome-repo/ (master)]igitari> > ls
+README.md  package.json  src/
 ```
 
-You can also run shell commands by typing '>'
+Open repository in browser:
 ```
-[.../awesome-repo/ (master)]Git> > ls
-README.md  git-env.sh
-[.../awesome-repo/ (master)]Git>
+[.../awesome-repo/ (master)]igitari> openweb origin
+Opened: https://github.com/user/repo
 ```
 
-Also supports binary operators!
+### Operator Support
 ```
-[.../awesome-repo/ (master)]Git> status && > ls -l
-On branch master
-Your branch is up to date with 'origin/master'.
-
-nothing to commit, working tree clean
-total 8
--rw-r--r-- 1 user user  102 Mar 23 14:30 README.md
--rwxr-xr-x 1 user user 3600 Mar 23 14:30 git-env.sh
-[.../awesome-repo/ (master)]Git> status && branch
-On branch master
-Your branch is up to date with 'origin/master'.
-
-nothing to commit, working tree clean
-* master
-  branch2
-[.../awesome-repo/ (master)]Git>
+[.../awesome-repo/ (master)]igitari> status && > ls -la
+[.../awesome-repo/ (master)]igitari> add . || echo "Failed to add files"
 ```
+
+## Uninstallation
+```sh
+rm $(which igitari)
+```
+
+## License
+AGPL-3.0-or-later © 2025 BashhScriptKid
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+See the full license in the script header or at https://www.gnu.org/licenses/.
+
+## Why AGPL?
+Igitari uses AGPL-3.0-or-later to ensure it remains free and open. If you modify and distribute Igitari (including as part of a web service), you must share your changes. This prevents SaaS exploitation while encouraging community improvements.
+
+---
+Hope this is useful!
