@@ -30,7 +30,7 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly IGITARI_VERSION="1.4-l"
+readonly IGITARI_VERSION="3.0"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
@@ -75,7 +75,7 @@ REPO_STASH_DIRTY=0
 # Verify Git installation
 check_git_installation() {
     if ! command -v git >/dev/null 2>&1; then
-        echo "Error: Git is not installed or not in PATH."
+        echo "Error: Git is not installed or not in PATH. (Hello? You're forgetting the essential here.)"
         exit 1
     fi
 }
