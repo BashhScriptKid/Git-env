@@ -492,6 +492,116 @@ setup_custom_tab_completion() {
     log "Custom tab completion enabled"
 }
 
+#--|GIT_HELPERS
+#------------------------------------------------------------------------------
+# Git Helpers
+#------------------------------------------------------------------------------
+
+## These are considered 'tricks' that is not well known or commonly used, but comes in handy
+
+# Syntax: squash [amount] "[message (optional)]"
+squash() {
+    local n=$1
+    local message="$2"
+    local stash_created=false
+
+    [[ $n =~ ^[0-9]+$ ]] || { echo "Error: ...I'm asking numbers, not algebra. Please provide a valid number."; return 1; }
+
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: squash [amount] [message(optional)]"
+        return 1
+    fi
+
+    if [[ $n -lt 2 ]]; then
+        echo "Error: You can't just squash $n commit, how the hell would that supposed to work? At least 2."
+        return 1
+    fi
+
+    if [[ $(git rev-list --count HEAD) -lt $n ]]; then
+        echo "Error: Only $(git rev-list --count HEAD) commits exist, can't squash more than that."
+        return 1
+    fi
+
+
+    echo "You are about to squash the following $n commits:"
+    git log --oneline --decorate -n $n
+    echo
+
+    confirm=''
+    while [[ $confirm != "y" && $confirm != "n" ]]; do
+        read -s -n1 -p "Proceed? (y/n) " confirm < /dev/tty || {
+            echo "Aborted by user"
+            return 1
+        }
+    done
+    echo ; echo # 2 newline
+
+
+    if [[ $confirm == "n" ]]; then
+        echo "Squashing aborted! No changes are made."
+        return 1
+    fi
+
+    # Check if there are uncommitted changes
+    if ! git diff-index --quiet HEAD --; then
+        if git stash --include-untracked; then
+            stash_created=true
+        else
+            echo "Failed to stash changes! Aborting. (I can't risk nuking your work)"
+            return 1
+        fi
+    fi
+
+    # Store original HEAD
+    local original_head=$(git rev-parse HEAD)
+
+    # Reset back n commits
+    git reset --hard HEAD~$n || {
+        echo "Error: Reset failed"
+        return 1
+    }
+
+    # Squash the commits we just removed
+    git merge --squash "$original_head" || {
+        echo "Error: Merge failed (conflicts?)"
+        if [[ $stash_created == true ]]; then
+            echo "Sorry, you need to resolve conflicts manually..."
+            echo "When you're done, run 'stash pop --index' to restore your uncommitted changes."
+            echo "If you wish to cancel this operation, run 'reset --hard $original_head'"
+        fi
+        return 1
+    }
+
+
+    # Commit
+    if [[ -z "$message" ]]; then
+        git commit
+    else
+        git commit -m "$message"
+    fi
+
+    if [[ $? -ne 0 ]]; then
+        echo "Commit failed. Squashed changes are staged but not committed."
+        if $stash_created; then
+            echo "Stashed changes NOT restored to avoid confusion."
+            echo "When ready, manually: stash pop --index"
+        fi
+        return 1
+    fi
+
+
+    # Restore stash if we created one
+    if $stash_created; then
+        git stash pop --index || {
+            echo "Warning: Failed to fully reapply stashed changes."
+            echo "Your stash is still safe."
+            echo "Resolve conflicts or retry with: git stash apply --index"
+            echo "If you want to discard partial application: reset --hard HEAD"
+            return 1
+        }
+    fi
+}
+
 #--|GIT_FUNC
 #------------------------------------------------------------------------------
 # Git Repository Functions
