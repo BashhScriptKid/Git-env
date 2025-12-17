@@ -602,6 +602,123 @@ squash() {
     fi
 }
 
+discard() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: discard <file> | all (tracked | untracked | staged | unstaged)"
+        return 1
+    fi
+
+    discard_file() {
+        local tracked
+        tracked=$(git ls-files --error-unmatch "$1" 2>/dev/null)
+
+        if [[ ! -e "$1" ]]; then
+            echo "File '$1' not found."
+            return 1
+        fi
+
+        if [[ -n "$tracked" ]]; then
+            git checkout -- "$1"
+        else
+            git rm --cached "$1"
+        fi
+
+        if [[ $? -eq 0 ]]; then
+            echo "File '$1' discarded."
+        else
+            echo "Failed to discard file '$1'."
+        fi
+    }
+
+    discard_all(){
+
+        __warn_discard(){
+            local n_file=$1
+            local mode=$2
+            local filelist=$3 # Supposed to be piped from git commands
+
+            [[ $n_file -eq 0 ]] && {
+                echo "Nothing to discard."
+                return 1
+            }
+
+            # Plural/Singular text thing
+            if [[ $n_file -eq 1 ]]; then
+                echo "This $mode file will be discarded:"
+            else
+                echo "The following $n_file $mode files will be discarded:"
+            fi
+
+            echo "$filelist"
+
+            confirm=''
+            echo -n "Are you sure? (y/n) "
+            while [[ $confirm != "y" && $confirm != "n" ]]; do
+                read -n 1 -r confirm
+            done
+            echo
+
+            if [[ $confirm == "y" ]]; then
+                return 0
+            elif [[ $confirm == "n" ]]; then
+                echo "Discard operation aborted."
+                return 1
+            fi
+        }
+
+        case "$1" in
+            '') # DISCARD EVERYTHING
+                list=$(git status --porcelain)
+                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+                filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
+                __warn_discard "$filecount" "" "$filelist" && {
+                    git reset --hard HEAD
+                    git clean -fd
+                }
+                ;;
+            tracked)
+                list=$(git ls-files -m)
+                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+                __warn_discard "$filecount" "modified" "$list" &&
+                git reset --hard HEAD
+                ;;
+            untracked)
+                list=$(git ls-files --others --exclude-standard)
+                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+                __warn_discard "$filecount" "untracked" "$list" &&
+                git clean -fd
+                ;;
+            staged)
+                list=$(git diff --cached --name-only)
+                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+                __warn_discard "$filecount" "staged" "$list" &&
+                git reset HEAD
+                ;;
+            unstaged)
+                list=$(git diff --name-only)
+                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+                __warn_discard "$filecount" "unstaged" "$list" &&
+                git checkout -- .
+                ;;
+            *)
+                echo "Invalid mode '$1'."
+                return 1
+                ;;
+        esac
+
+        [[ $filecount -gt 0 ]] && echo "All $1 changes discarded."
+    }
+
+    if [[ "$1" == "all" ]]; then
+        mode=$2
+        discard_all "$mode"
+    else
+        discard_file "$1"
+    fi
+}
+
+
+
 #--|GIT_FUNC
 #------------------------------------------------------------------------------
 # Git Repository Functions
