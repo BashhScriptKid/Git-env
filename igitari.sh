@@ -744,6 +744,56 @@ discard() {
     fi
 }
 
+reword() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: reword [new commit message] [<commit-hash> (optional)]"
+        return 1
+    fi
+
+    local target_commit=""
+    local new_message=""
+
+    new_message="$1"
+    if [[ -z "$2" ]]; then
+        target_commit="$(git rev-parse HEAD)"
+    else
+        target_commit="$(git rev-parse "$2")"
+    fi
+
+    if ! git cat-file -e "$target_commit^{commit}" 2>/dev/null; then
+        echo "Error: '$target_commit' is not a valid commit."
+        return 1
+    fi
+
+    if [[ "$(git rev-parse "$target_commit")" == "$(git rev-parse HEAD)" ]]; then
+        git commit --amend -m "$new_message"
+    else
+        echo "Warning: You are about to reword commit '$target_commit', which is an older commit."
+        echo "This will require a rebase, which may be dangerous ESPECIALLY if you have already pushed the commit."
+        echo
+
+        confirm=''
+        echo -n "Proceed anyway? (y/n) "
+        while [[ $confirm != "y" && $confirm != "n" ]]; do
+            read -n 1 -r confirm
+        done
+        echo
+
+        if [[ $confirm == "y" ]]; then
+            # Slower than lazygit's implementation, but this works, will find a better way later
+            FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter "
+                if [ \"\$GIT_COMMIT\" = '$target_commit' ]; then
+                    echo '$new_message'
+                else
+                    cat
+                fi
+            " "$target_commit^..HEAD"
+        else
+            echo "Alright, aborted."
+        fi
+    fi
+}
+
 
 
 #--|GIT_FUNC
