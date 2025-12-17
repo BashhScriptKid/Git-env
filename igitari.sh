@@ -66,6 +66,7 @@ ARG=""
 REPO_IS_DIRTY=0
 REPO_IS_DIRTY_AND_STAGED=0
 REPO_STASH_DIRTY=0
+SELF_REALPATH=$(realpath "$0")
 
 #--|SANITY_CHECKS
 #------------------------------------------------------------------------------
@@ -1117,7 +1118,7 @@ handle_interrupt() {
     # Ensure terminal echo is on
     stty echo
     echo -n
-    exec "$0" --no-header "${ARG[@]}"
+    exec "$SELF_REALPATH" --no-header "${ARG[@]}"
 }
 
 # Handle termination signals
