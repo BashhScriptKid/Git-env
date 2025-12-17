@@ -603,30 +603,41 @@ squash() {
 
 discard() {
     if [[ -z "$1" ]]; then
-        echo "Usage: discard <file> | all (tracked | untracked | staged | unstaged)"
+        echo "Usage: discard <file1> <file2> ... | all (tracked | untracked | staged | unstaged)"
         return 1
     fi
 
-    discard_file() {
+    discard_files() {
+        local file_array=("$@")
         local tracked
-        tracked=$(git ls-files --error-unmatch "$1" 2>/dev/null)
 
-        if [[ ! -e "$1" ]]; then
-            echo "File '$1' not found."
-            return 1
-        fi
+        local failed=0
+        for file in "${file_array[@]}"; do
+            if [[ ! -e "$file" ]]; then
+                echo "File '$file' not found."
+                failed=1
+                continue
+            fi
 
-        if [[ -n "$tracked" ]]; then
-            git checkout -- "$1"
-        else
-            git rm --cached "$1"
-        fi
+            echo "Discarding file '$file'..."
 
-        if [[ $? -eq 0 ]]; then
-            echo "File '$1' discarded."
-        else
-            echo "Failed to discard file '$1'."
-        fi
+            tracked=$(git ls-files --error-unmatch "$file" 2>/dev/null)
+
+            if [[ -n "$tracked" ]]; then
+                git checkout -- "$file"
+            else
+                rm -rf "$file"
+            fi
+
+            if [[ $? -eq 0 ]]; then
+                echo "File '$file' discarded."
+            else
+                echo "Failed to discard file '$file'."
+                failed=1
+            fi
+        done
+
+        [[ $failed -ne 0 ]] && return 1
     }
 
     discard_all(){
@@ -659,7 +670,7 @@ discard() {
             confirm=''
             echo -n "Are you sure? (y/n) "
             while [[ $confirm != "y" && $confirm != "n" ]]; do
-                read -n 1 -r confirm || { echo; echo "No? Could've typed 'n', but okay, aborting."; return 1; }
+                read -n 1 -r confirm
             done
             echo
 
@@ -679,6 +690,7 @@ discard() {
                 list=$(git status --porcelain)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
                 filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
+
                 __warn_discard "$filecount" "" "$filelist" && {
                     git reset --hard HEAD
                     git clean -fd
@@ -687,24 +699,28 @@ discard() {
             tracked)
                 list=$(git ls-files -m)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
                 __warn_discard "$filecount" "modified" "$list" &&
                 git reset --hard HEAD
                 ;;
             untracked)
                 list=$(git ls-files --others --exclude-standard)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
                 __warn_discard "$filecount" "untracked" "$list" &&
                 git clean -fd
                 ;;
             staged)
                 list=$(git diff --cached --name-only)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
                 __warn_discard "$filecount" "staged" "$list" &&
                 git reset HEAD
                 ;;
             unstaged)
                 list=$(git diff --name-only)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
                 __warn_discard "$filecount" "unstaged" "$list" &&
                 git checkout -- .
                 ;;
@@ -724,7 +740,7 @@ discard() {
         mode=$2
         discard_all "$mode"
     else
-        discard_file "$1"
+        discard_files "$@"
     fi
 }
 
