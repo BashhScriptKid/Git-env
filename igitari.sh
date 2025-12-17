@@ -572,8 +572,6 @@ squash() {
         return 1
     }
 
-
-    # Commit
     if [[ -z "$message" ]]; then
         git commit
     else
@@ -649,12 +647,12 @@ discard() {
                 echo "The following $n_file $mode files will be discarded:"
             fi
 
-            echo "$filelist"
+            echo -e "$filelist \n"
 
             confirm=''
             echo -n "Are you sure? (y/n) "
             while [[ $confirm != "y" && $confirm != "n" ]]; do
-                read -n 1 -r confirm
+                read -n 1 -r confirm || { echo; echo "No? Could've typed 'n', but okay, aborting."; return 1; }
             done
             echo
 
@@ -669,7 +667,7 @@ discard() {
         local list filecount filelist
 
         case "$1" in
-            "") # [[ $filecount -gt 0 ]] && echo "All $1 changes discarded."DISCARD EVERYTHING
+            "") # DISCARD EVERYTHING
                 list=$(git status --porcelain)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
                 filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
@@ -874,7 +872,6 @@ initialise_keybinds() {
 
     # CTRL + G
     bind -x '"\C-g":f_lazygit'
-
 }
 
 #--|CMD_PROC_ENGINE
@@ -1183,7 +1180,7 @@ generate_prompt() {
         # Final prompt
         echo -e "\e[34m[\e[1m${root_indicator}${repo_name}/${subdir}\e[32m (${branch_info}${dirty_markers})\e[0m\e[34m]Git>\e[0m "
     else
-        log "Repository no longer detected! Commands will stop working."
+        log "Repository not detected! Commands will stop working."
         echo -e "[\e[93m\e[1mN/A\e[0m]Git> "
     fi
 }
@@ -1211,7 +1208,6 @@ Updater() {
 
     local latest_remote_sha
     local local_sha
-    local version
     local status
 
     connection_checker() {
@@ -1255,7 +1251,6 @@ Updater() {
             log "local and remote versions differ (${latest_remote_sha} != ${local_sha})"
             return 1
         fi
-
     }
 
     # shellcheck disable=SC2120
