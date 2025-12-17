@@ -882,6 +882,14 @@ initialise_keybinds() {
     bind -x '"\C-g":f_lazygit'
 }
 
+# Hot-reload self
+_reload() {
+    echo "Reloading, if you see 'readonly variable' error, that's normal!"
+    echo "________________________________________________________________"
+    echo
+    exec "$SELF_REALPATH" "${ARG[@]}"
+}
+
 #--|CMD_PROC_ENGINE
 #------------------------------------------------------------------------------
 # Command Processing Engine
