@@ -666,6 +666,8 @@ discard() {
             fi
         }
 
+        local list filecount filelist
+
         case "$1" in
             "") # [[ $filecount -gt 0 ]] && echo "All $1 changes discarded."DISCARD EVERYTHING
                 list=$(git status --porcelain)
