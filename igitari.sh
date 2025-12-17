@@ -706,7 +706,10 @@ discard() {
                 ;;
         esac
 
-        [[ $filecount -gt 0 ]] && echo "All $1 changes discarded."
+        if [[ $filecount -gt 0 ]]; then
+            [[ -z "$1" ]] && echo "All changes discarded." || echo "All $1 changes discarded."
+        fi
+
     }
 
     if [[ "$1" == "all" ]]; then
