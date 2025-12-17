@@ -755,7 +755,7 @@ dirty_check() {
         REPO_IS_DIRTY_AND_STAGED=0
     fi
 
-    if git rev-parse --verify refs/stash 2>3 /dev/null; then
+    if git rev-parse --verify refs/stash >/dev/null 2>&1; then
         REPO_STASH_DIRTY=1
     else
         REPO_STASH_DIRTY=0
