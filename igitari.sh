@@ -630,6 +630,7 @@ discard() {
 
     discard_all(){
 
+        local aborted=1
         __warn_discard(){
             local n_file=$1
             local mode=$2
@@ -641,14 +642,19 @@ discard() {
             }
 
             # Plural/Singular text thing
-            if [[ $n_file -eq 1 ]]; then
+            if [[ $n_file -eq 1 ]] && [[ -z $mode ]]; then
+                echo "This file will be discarded:"
+            elif [[ $n_file -eq 1 ]] && [[ -n $mode ]]; then
                 echo "This $mode file will be discarded:"
+            elif [[ -z $mode ]]; then
+                echo "The following $n_file files will be discarded:"
             else
                 echo "The following $n_file $mode files will be discarded:"
             fi
 
-            echo -e "$filelist \n"
+            printf '%s\n' "$filelist" | sed 's/^/ -  /'
 
+            echo
             confirm=''
             echo -n "Are you sure? (y/n) "
             while [[ $confirm != "y" && $confirm != "n" ]]; do
@@ -657,6 +663,7 @@ discard() {
             echo
 
             if [[ $confirm == "y" ]]; then
+                aborted=0
                 return 0
             elif [[ $confirm == "n" ]]; then
                 echo "Discard operation aborted."
@@ -706,7 +713,7 @@ discard() {
                 ;;
         esac
 
-        if [[ $filecount -gt 0 ]]; then
+        if [[ $filecount -gt 0 ]] && [[ "$aborted" -ne 1 ]]; then
             [[ -z "$1" ]] && echo "All changes discarded." || echo "All $1 changes discarded."
         fi
 
