@@ -667,7 +667,7 @@ discard() {
         }
 
         case "$1" in
-            '') # DISCARD EVERYTHING
+            "") # [[ $filecount -gt 0 ]] && echo "All $1 changes discarded."DISCARD EVERYTHING
                 list=$(git status --porcelain)
                 filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
                 filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
