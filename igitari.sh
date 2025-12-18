@@ -750,6 +750,11 @@ reword() {
         return 1
     fi
 
+    if [[ $# -gt 2 ]]; then
+        echo "Error: Please put the new commit message in quotes, I can't tell which one is which >.> (Too many arguments)"
+        return 1
+    fi
+
     local target_commit=""
     local new_message=""
 
@@ -759,6 +764,37 @@ reword() {
     else
         target_commit="$(git rev-parse "$2")"
     fi
+
+    __reword_past_commit_that_for_some_fucking_reason_got_too_complicated() {
+        local short_sha
+        short_sha="$(git rev-parse --short "$target_commit")"
+        local editor_script message_script
+        editor_script="$(mktemp)"
+        message_script="$(mktemp)"
+
+        cat > "$editor_script" <<EOF_script
+#!/bin/sh
+sed -i -e 's/^pick $short_sha /reword $short_sha /' "\$1"
+EOF_script
+
+        # Properly escape the new message for the script
+        cat > "$message_script" <<'EOF_msg'
+#!/bin/sh
+cat > "$1" <<'COMMIT_MSG'
+EOF_msg
+        printf '%s\n' "$new_message" >> "$message_script"
+        cat >> "$message_script" <<'EOF_msg'
+COMMIT_MSG
+EOF_msg
+
+        chmod +x "$editor_script" "$message_script"
+
+        GIT_SEQUENCE_EDITOR="$editor_script" \
+        GIT_EDITOR="$message_script" \
+        git rebase -i "$target_commit^"
+
+        rm -f "$editor_script" "$message_script"
+    }
 
     if ! git cat-file -e "$target_commit^{commit}" 2>/dev/null; then
         echo "Error: '$target_commit' is not a valid commit."
@@ -772,7 +808,7 @@ reword() {
         echo "This will require a rebase, which may be dangerous ESPECIALLY if you have already pushed the commit."
         echo
 
-        confirm=''
+        local confirm=''
         echo -n "Proceed anyway? (y/n) "
         while [[ $confirm != "y" && $confirm != "n" ]]; do
             read -n 1 -r confirm
@@ -780,12 +816,7 @@ reword() {
         echo
 
         if [[ $confirm == "y" ]]; then
-            # Get the short SHA for matching in the rebase todo list
-            local short_sha="$(git rev-parse --short "$target_commit")"
-
-            GIT_SEQUENCE_EDITOR="sed -i -e '/^pick $short_sha/s/^pick/reword/'" \
-            git -c "core.editor=echo '$new_message' >" \
-            rebase -i "$target_commit^"
+            __reword_past_commit_that_for_some_fucking_reason_got_too_complicated
         else
             echo "Alright, aborted."
         fi
