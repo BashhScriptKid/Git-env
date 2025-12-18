@@ -780,14 +780,12 @@ reword() {
         echo
 
         if [[ $confirm == "y" ]]; then
-            # Slower than lazygit's implementation, but this works, will find a better way later
-            FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter "
-                if [ \"\$GIT_COMMIT\" = '$target_commit' ]; then
-                    echo '$new_message'
-                else
-                    cat
-                fi
-            " "$target_commit^..HEAD"
+            # Get the short SHA for matching in the rebase todo list
+            local short_sha="$(git rev-parse --short "$target_commit")"
+
+            GIT_SEQUENCE_EDITOR="sed -i -e '/^pick $short_sha/s/^pick/reword/'" \
+            git -c "core.editor=echo '$new_message' >" \
+            rebase -i "$target_commit^"
         else
             echo "Alright, aborted."
         fi
