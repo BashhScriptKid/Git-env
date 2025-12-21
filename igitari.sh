@@ -4,7 +4,7 @@
 ## Igitari — A kindly powerful Git companion
 ## Make Git approachable without sacrificing its power
 ##==============================================================================
-## Version: 3.0
+## Version: 3.5.5
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
 ## Copyright (C) 2025 BashhScriptKid
 ## SPDX-License-Identifier: AGPL-3.0-or-later
@@ -30,7 +30,7 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly IGITARI_VERSION="3.0"
+readonly IGITARI_VERSION="3.5.5"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
@@ -55,7 +55,8 @@ NOT_GitDir=0
 CHECK_UPDATES=1
 NO_MARKERS=0
 
-RUNTIME_VERSION="$(cat "${LOCALPATH}"ref.sha)(${IGITARI_VERSION})"
+RUNTIME_COMMIT="$(cat "${LOCALPATH}ref.sha")"
+RUNTIME_VERSION="${IGITARI_VERSION}-${RUNTIME_COMMIT:0:7}"
 
 # Runtime variables
 TARGET_PATH=""
@@ -89,7 +90,7 @@ check_localpath() {
 }
 
 get_commithash_ref() {
-    latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
+    latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git refs/heads/mono-master | awk '{print $1}')"
     echo "$latest_remote_sha" >>"${LOCALPATH}ref.sha"
 }
 
@@ -995,7 +996,10 @@ execute_command() {
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
-    [[ -z "${cmd}" ]] && { handle_empty_command; return 0; }
+    [[ -z "${cmd}" ]] && {
+        handle_empty_command
+        return 0
+    }
 
     case "$cmd" in
     "exit")
@@ -1045,7 +1049,7 @@ EOF
     *)
         # Check if command matches any exposed function
         local fn
-        local base_cmd="${cmd%% *}"  # Everything before first space
+        local base_cmd="${cmd%% *}" # Everything before first space
 
         # Check if it's in exposed functions
         for fn in "${EXPOSED_FUNCS[@]}"; do
@@ -1060,7 +1064,7 @@ EOF
                 [[ "$args" == "$cmd" ]] && args=""
 
                 # Call the function with args
-                $fn $args  # Don't quote $args - we want word splitting
+                $fn $args # Don't quote $args - we want word splitting
                 exit_code=$?
                 [[ $exit_code -eq 0 ]] && history -s "${cmd}"
                 return $exit_code
@@ -1071,7 +1075,6 @@ EOF
         log "Executing Git command: ${git_path} ${cmd}"
         eval "${git_path}" "${cmd}"
         ;;
-
 
     esac
 
