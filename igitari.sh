@@ -506,7 +506,10 @@ squash() {
     local message="$2"
     local stash_created=false
 
-    [[ $n =~ ^[0-9]+$ ]] || { echo "Error: ...I'm asking numbers, not algebra. Please provide a valid number."; return 1; }
+    [[ $n =~ ^[0-9]+$ ]] || {
+        echo "Error: ...I'm asking numbers, not algebra. Please provide a valid number."
+        return 1
+    }
 
     if [[ $# -lt 1 ]]; then
         echo "Usage: squash [amount] [message(optional)]"
@@ -523,20 +526,19 @@ squash() {
         return 1
     fi
 
-
     echo "You are about to squash the following $n commits:"
     git log --oneline --decorate -n $n
     echo
 
     confirm=''
     while [[ $confirm != "y" && $confirm != "n" ]]; do
-        read -s -n1 -p "Proceed? (y/n) " confirm < /dev/tty || {
+        read -s -n1 -p "Proceed? (y/n) " confirm </dev/tty || {
             echo "Aborted by user"
             return 1
         }
     done
-    echo ; echo # 2 newline
-
+    echo
+    echo # 2 newline
 
     if [[ $confirm == "n" ]]; then
         echo "Squashing aborted! No changes are made."
@@ -587,7 +589,6 @@ squash() {
         fi
         return 1
     fi
-
 
     # Restore stash if we created one
     if $stash_created; then
@@ -640,10 +641,10 @@ discard() {
         [[ $failed -ne 0 ]] && return 1
     }
 
-    discard_all(){
+    discard_all() {
 
         local aborted=1
-        __warn_discard(){
+        __warn_discard() {
             local n_file=$1
             local mode=$2
             local filelist=$3 # Supposed to be piped from git commands
@@ -686,48 +687,48 @@ discard() {
         local list filecount filelist
 
         case "$1" in
-            "") # DISCARD EVERYTHING
-                list=$(git status --porcelain)
-                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
-                filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
+        "") # DISCARD EVERYTHING
+            list=$(git status --porcelain)
+            filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+            filelist=$(printf '%s\n' "$list" | sed 's/^.\{1,2\} //')
 
-                __warn_discard "$filecount" "" "$filelist" && {
-                    git reset --hard HEAD
-                    git clean -fd
-                }
-                ;;
-            tracked)
-                list=$(git ls-files -m)
-                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
-
-                __warn_discard "$filecount" "modified" "$list" &&
+            __warn_discard "$filecount" "" "$filelist" && {
                 git reset --hard HEAD
-                ;;
-            untracked)
-                list=$(git ls-files --others --exclude-standard)
-                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
-
-                __warn_discard "$filecount" "untracked" "$list" &&
                 git clean -fd
-                ;;
-            staged)
-                list=$(git diff --cached --name-only)
-                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+            }
+            ;;
+        tracked)
+            list=$(git ls-files -m)
+            filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
 
-                __warn_discard "$filecount" "staged" "$list" &&
+            __warn_discard "$filecount" "modified" "$list" &&
+                git reset --hard HEAD
+            ;;
+        untracked)
+            list=$(git ls-files --others --exclude-standard)
+            filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
+            __warn_discard "$filecount" "untracked" "$list" &&
+                git clean -fd
+            ;;
+        staged)
+            list=$(git diff --cached --name-only)
+            filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+
+            __warn_discard "$filecount" "staged" "$list" &&
                 git reset HEAD
-                ;;
-            unstaged)
-                list=$(git diff --name-only)
-                filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
+            ;;
+        unstaged)
+            list=$(git diff --name-only)
+            filecount=$(printf '%s\n' "$list" | sed '/^$/d' | wc -l)
 
-                __warn_discard "$filecount" "unstaged" "$list" &&
+            __warn_discard "$filecount" "unstaged" "$list" &&
                 git checkout -- .
-                ;;
-            *)
-                echo "Invalid mode '$1'."
-                return 1
-                ;;
+            ;;
+        *)
+            echo "Invalid mode '$1'."
+            return 1
+            ;;
         esac
 
         if [[ $filecount -gt 0 ]] && [[ "$aborted" -ne 1 ]]; then
@@ -772,26 +773,26 @@ reword() {
         editor_script="$(mktemp)"
         message_script="$(mktemp)"
 
-        cat > "$editor_script" <<EOF_script
+        cat >"$editor_script" <<EOF_script
 #!/bin/sh
 sed -i -e 's/^pick $short_sha /reword $short_sha /' "\$1"
 EOF_script
 
         # Properly escape the new message for the script
-        cat > "$message_script" <<'EOF_msg'
+        cat >"$message_script" <<'EOF_msg'
 #!/bin/sh
 cat > "$1" <<'COMMIT_MSG'
 EOF_msg
-        printf '%s\n' "$new_message" >> "$message_script"
-        cat >> "$message_script" <<'EOF_msg'
+        printf '%s\n' "$new_message" >>"$message_script"
+        cat >>"$message_script" <<'EOF_msg'
 COMMIT_MSG
 EOF_msg
 
         chmod +x "$editor_script" "$message_script"
 
         GIT_SEQUENCE_EDITOR="$editor_script" \
-        GIT_EDITOR="$message_script" \
-        git rebase -i "$target_commit^"
+            GIT_EDITOR="$message_script" \
+            git rebase -i "$target_commit^"
 
         rm -f "$editor_script" "$message_script"
     }
@@ -822,8 +823,6 @@ EOF_msg
         fi
     fi
 }
-
-
 
 #--|GIT_FUNC
 #------------------------------------------------------------------------------
@@ -979,7 +978,7 @@ initialise_keybinds() {
 
 # Hot-reload self
 _reload() {
-    echo "Reloading, if you see 'readonly variable' error, that's normal!"
+    echo "Reloading!"
     echo "________________________________________________________________"
     echo
     exec "$SELF_REALPATH" "${ARG[@]}"
