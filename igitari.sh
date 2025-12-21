@@ -894,7 +894,7 @@ check_git_repository() {
 # Open repository in web browser
 # Usage: openweb [remote] [page]
 # Pages: issues, pr, pull-request, wiki, settings
-open_repository_web() {
+openweb() {
     local remote="$1"
     local page="$2"
 
@@ -991,13 +991,11 @@ _reload() {
 
 # Execute individual command
 execute_command() {
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
-    local last_exit_code=0
 
-    if [[ -z "${cmd}" ]]; then
-        return 0
-    fi
+    [[ -z "${cmd}" ]] && { handle_empty_command; return 0; }
 
     case "$cmd" in
     "exit")
@@ -1008,24 +1006,16 @@ execute_command() {
     "git"*)
         echo "Do you even have to type 'git' in here? Sure."
         eval "${git_path}" "${cmd#git }"
-        last_exit_code=$?
-        [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
         ;;
 
     "lazygit")
         if command -v lazygit >/dev/null 2>&1; then
             echo "Starting LazyGit..."
             lazygit
-            last_exit_code=$?
         else
             echo -e "\e[93m\e[1mError: LazyGit is not installed\e[0m"
-            last_exit_code=1
+            return 1
         fi
-        ;;
-
-    "openweb"*)
-        open_repository_web "${cmd#openweb }"
-        last_exit_code=$?
         ;;
 
     "help")
@@ -1033,10 +1023,12 @@ execute_command() {
         echo -e "\n\e[1m\e[34mAdditional Igitari commands:\e[0m"
         cat <<'EOF'
   openweb     Open repository in web browser
+  squash      Squash the last n-th commits into one
+  discard     Intelligently discard changes
+  reword      Change a commit message
   lazygit     Launch LazyGit TUI (requires installation)
   >command    Execute shell command (prefix with >)
 EOF
-        last_exit_code=0
         ;;
 
     \>*)
@@ -1044,29 +1036,48 @@ EOF
         local shell_cmd="${cmd#>}"
         shell_cmd="$(echo "${shell_cmd}" | xargs)" # Trim whitespace
 
-        if [[ -n "${shell_cmd}" ]]; then
-            log "Executing shell command: ${shell_cmd}"
-            eval "${shell_cmd}"
-            last_exit_code=$?
-            [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
-        fi
-        ;;
+        [[ -n "${shell_cmd}" ]] || return 0
 
-    "")
-        # Empty command - do nothing
-        last_exit_code=0
+        log "Executing shell command: ${shell_cmd}"
+        eval "${shell_cmd}"
         ;;
 
     *)
-        # Regular Git command
+        # Check if command matches any exposed function
+        local fn
+        local base_cmd="${cmd%% *}"  # Everything before first space
+
+        # Check if it's in exposed functions
+        for fn in "${EXPOSED_FUNCS[@]}"; do
+            # log "Checking exposed function: ${fn} == ${base_cmd}"
+            if [[ "${fn}" == "${base_cmd}" ]]; then
+                log "Executing exposed function: ${fn}"
+
+                # Get the arguments (everything after first word)
+                local args="${cmd#* }"
+
+                # If cmd had no spaces, args will equal cmd (no arguments)
+                [[ "$args" == "$cmd" ]] && args=""
+
+                # Call the function with args
+                $fn $args  # Don't quote $args - we want word splitting
+                exit_code=$?
+                [[ $exit_code -eq 0 ]] && history -s "${cmd}"
+                return $exit_code
+            fi
+        done
+
+        # Default: treat as git command
         log "Executing Git command: ${git_path} ${cmd}"
         eval "${git_path}" "${cmd}"
-        last_exit_code=$?
-        [[ $last_exit_code -eq 0 ]] && history -s "${cmd}"
         ;;
+
+
     esac
 
-    return $last_exit_code
+    local exit_code=$?
+    [[ $exit_code -eq 0 ]] && history -s "${cmd}"
+    return $exit_code
 }
 
 # Process command line with operator support (&&, ||, ;)
