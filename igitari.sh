@@ -1109,7 +1109,8 @@ fzf() {
         [[ -z $selected_object ]] && return 1
 
         # Extract the short SHA from the selected commit (herestrings)
-        read object_type object_sha <<< "$selected_object"
+        object_type=$(echo "$selected_object" | awk '{print $1}')
+        object_sha=$(echo "$selected_object" | awk '{print $2}')
 
         case $1 in
           sha) echo "$object_sha" ;;
@@ -1172,7 +1173,6 @@ fzf() {
       dangling*)  fzf_dangles $returntype ;;
       *) echo "fzf (commits, tags, reflogs, staged, unstaged, tracked, untracked, stashes, dangling) [returns]" 1>&2 && return 1 ;;
     esac
-
 }
 
 # Open repository in web browser
