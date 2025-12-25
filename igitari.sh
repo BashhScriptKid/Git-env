@@ -1274,7 +1274,7 @@ _reload() {
 
 # Execute individual command
 execute_command() {
-    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword")
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
