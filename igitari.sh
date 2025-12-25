@@ -1158,18 +1158,19 @@ fzf() {
 
     }
 
-    # TODO: Switch cases here
+    returntype=$2
+
     case $1 in
-      commits)   fzf_logcommits $2 ;;
-      tags)      fzf_logtags $2 ;;
-      reflogs)   fzf_logreflogs $2 ;;
+      commits*)   fzf_logcommits $returntype ;;
+      tags*)      fzf_tags $returntype ;;
+      reflogs*)   fzf_reflogs $returntype ;;
       staged)    fzf_stagedfile ;;
       unstaged)  fzf_unstagedfile ;;
       tracked)   fzf_trackedfile ;;
       untracked) fzf_untrackedfile ;;
-      stashes)   fzf_stash $2 ;;
-      dangling)  fzf_dangles $2 ;;
-      *) echo "Invalid command" ;;
+      stashes*)   fzf_stashlist $returntype ;;
+      dangling*)  fzf_dangles $returntype ;;
+      *) echo "fzf (commits, tags, reflogs, staged, unstaged, tracked, untracked, stashes, dangling) [returns]" 1>&2 && return 1 ;;
     esac
 
 }
