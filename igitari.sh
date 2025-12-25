@@ -998,6 +998,99 @@ fzf() {
         esac
     }
 
+    # the next 4 function are copy-pasted, which I do not give a fuck about to abstract
+    fzf_stagedfile(){
+        __fzf-exec() {
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --multi \
+                    --prompt "Select staged files: " \
+                    --preview 'git diff --cached --color=always {}' \
+                    --pointer '  '
+        }
+
+        staged_filelist=$(git diff --cached --name-only)
+
+        [[ -z $staged_filelist ]] && echo "There are no staged files!" && return 1
+
+        selected_files=$(echo "$staged_filelist" | __fzf-exec)
+
+        [[ -z $selected_files ]] && return 1
+
+        # Probably fine stripping newlines; echo is ok
+        echo "$selected_files"
+    }
+
+    fzf_unstagedfile(){
+        __fzf-exec() {
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --multi \
+                    --prompt "Select unstaged files: " \
+                    --preview 'git diff --color=always {}' \
+                    --pointer '  '
+        }
+
+        unstaged_filelist=$(git diff --name-only)
+
+        [[ -z $unstaged_filelist ]] && echo "There are no unstaged files!" && return 1
+
+        selected_files=$(echo "$unstaged_filelist" | __fzf-exec)
+
+        [[ -z $selected_files ]] && return 1
+
+        # Probably fine stripping newlines; echo is ok
+        echo "$selected_files"
+    }
+
+    fzf_trackedfile(){
+        __fzf-exec() {
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --multi \
+                    --prompt "Select tracked files: " \
+                    --preview 'git diff --color=always {}' \
+                    --pointer '  '
+        }
+
+        tracked_filelist=$(git ls-files)
+
+        [[ -z $tracked_filelist ]] && echo "There are no tracked files!" && return 1
+
+        selected_files=$(echo "$tracked_filelist" | __fzf-exec)
+
+        [[ -z $selected_files ]] && return 1
+
+        # Probably fine stripping newlines; echo is ok
+        echo "$selected_files"
+    }
+
+    fzf_untrackedfile(){
+        __fzf-exec() {
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --multi \
+                    --prompt "Select untracked files: " \
+                    --preview 'cat {}' \
+                    --pointer '  '
+        }
+
+        untracked_filelist=$(git ls-files --others --exclude-standard)
+
+        [[ -z $untracked_filelist ]] && echo "There are no untracked files!" && return 1
+
+        selected_files=$(echo "$untracked_filelist" | __fzf-exec)
+
+        [[ -z $selected_files ]] && return 1
+
+        # Probably fine stripping newlines; echo is ok
+        echo "$selected_files"
+    }
+
     fzf_dangles() {
 
         # 100% height is intentional to allow better previews
