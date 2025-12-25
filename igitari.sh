@@ -978,8 +978,14 @@ fzf() {
                     --preview='git stash show --color=always {1}' \
                     --pointer '  '
         }
+        stash_list=$(git stash list)
 
-        selected_stash=$(git stash list | __fzf-exec)
+        if [[ -z $stash_list ]]; then
+            echo "There are no stashes to show!"
+            return 1
+        fi
+
+        selected_stash=$(echo "$stash_list" | __fzf-exec)
 
         # Extract the short SHA from the selected stash (strip trailing colon)
         stash_ref=$(echo "$selected_stash" | cut -d' ' -f1 | sed 's/:.*//')
