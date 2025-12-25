@@ -911,12 +911,12 @@ fzfg() {
     fzf_logcommits() {
 
         __fzf-exec() {
-             fzf --height=25% \
-                 --layout=reverse \
-                 --ansi \
-                 --prompt "Select a commit: "\
-                 --preview='git show --color=always $(echo {} | cut -d" " -f1)'\
-                 --pointer '  '
+            fzf --height=25% \
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a commit: " \
+                --preview='git show --color=always $(echo {} | cut -d" " -f1)' \
+                --pointer '  '
         }
 
         selected_commit=$(git log --oneline --color=always | __fzf-exec)
@@ -931,12 +931,12 @@ fzfg() {
     fzf_stashlist() {
 
         __fzf-exec() {
-             fzf --height=25% \
-                 --layout=reverse \
-                 --ansi \
-                 --prompt "Select a stash: "\
-                 --preview='git stash show --color=always $(echo {} | cut -d" " -f1)'\
-                 --pointer '  '
+            fzf --height=100% \
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a stash: " \
+                --preview='git stash show --color=always $(echo {} | cut -d" " -f1)' \
+                --pointer '  '
         }
 
         selected_stash=$(git stash list | __fzf-exec)
