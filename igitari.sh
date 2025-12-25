@@ -892,6 +892,64 @@ check_git_repository() {
 # Custom features
 #------------------------------------------------------------------------------
 
+## FZF-dependent features
+# Requires fzf to be installed on system but will not affect overall functionality.
+
+# Is going to be used in multiple fzf-based helpers
+__check_fzf() {
+    if ! command -v fzf &>/dev/null; then
+        echo -e "\e[93m\e[1mWarning: You're accessing fzf-based features but it's not installed on your system! The command name should've been obvious though :/ \e[0m"
+    fi
+}
+
+# Override normal fzf for git-specialised operations
+fzf() {
+    __check_fzf || return 1
+
+    fzf_logcommits() {
+
+        __fzf-exec() {
+             fzf --height=25% \
+                 --layout=reverse \
+                 --ansi \
+                 --prompt "Select a commit: "\
+                 --preview='git show --color=always $(echo {} | cut -d" " -f1)'\
+                 --pointer '  '
+        }
+
+        selected_commit=$(git log --oneline --color=always | __fzf-exec)
+
+        # Extract the short SHA from the selected commit
+        short_sha=$(echo "$selected_commit" | cut -d' ' -f1)
+
+        # Return the short SHA
+        echo "$short_sha"
+    }
+
+    fzf_stashlist() {
+
+        __fzf-exec() {
+             fzf --height=25% \
+                 --layout=reverse \
+                 --ansi \
+                 --prompt "Select a stash: "\
+                 --preview='git stash show --color=always $(echo {} | cut -d" " -f1)'\
+                 --pointer '  '
+        }
+
+        selected_stash=$(git stash list | __fzf-exec)
+
+        # Extract the short SHA from the selected stash (strip trailing colon)
+        short_sha=$(echo "$selected_stash" | cut -d' ' -f1 | sed 's/:.*//')
+
+        # Return the short SHA
+        echo "$short_sha"
+    }
+
+
+    # TODO: Switch cases here
+}
+
 # Open repository in web browser
 # Usage: openweb [remote] [page]
 # Pages: issues, pr, pull-request, wiki, settings
