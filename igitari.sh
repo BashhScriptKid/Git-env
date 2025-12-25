@@ -943,6 +943,29 @@ fzf() {
         esac
     }
 
+    fzf_reflogs() {
+
+        __fzf-exec() {
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --prompt "Search last HEAD location: " \
+                    --preview='git show --color=always {1}' \
+                    --pointer '  '
+        }
+
+        selected_location=$(git reflog --color=always | __fzf-exec)
+
+        # Extract the short SHA from the selected commit
+        short_sha=${selected_location%% *}
+
+        # Return the requested value, short_sha by default
+        case "$1" in
+        sha)       echo "$short_sha" ;;
+        message)   git show -s --format='%s' "$short_sha" ;;
+        diffs)     git show --color=always "$short_sha" ;;
+        *)         echo "$short_sha" ;;
+        esac
     }
 
     fzf_stashlist() {
