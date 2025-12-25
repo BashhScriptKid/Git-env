@@ -948,6 +948,28 @@ fzfg() {
         echo "$short_sha"
     }
 
+    fzf_dangles() {
+        __fzf-exec() {
+            fzf --height=25% \
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a dangling object: " \
+                --preview='git show --color=always {2}' \
+                --pointer '  '
+        }
+
+        fsck_list=$(git fsck --lost-found 2>/dev/null | awk '/dangling/ { print $2, $3 }')
+
+        selected_object=$(echo "$fsck_list" | __fzf-exec)
+        [[ -z $selected_object ]] && return 1
+
+        # Extract the short SHA from the selected commit (herestrings)
+        object_sha=$(awk '{print $2}' <<<"$selected_object")
+
+        # Return the short SHA
+        echo "$object_sha"
+    }
+
     fzf_tags() {
         __fzf-exec() {
             fzf --height=25% \
