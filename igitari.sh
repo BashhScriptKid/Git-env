@@ -948,6 +948,32 @@ fzfg() {
         echo "$short_sha"
     }
 
+    fzf_tags() {
+        __fzf-exec() {
+            fzf --height=25% \
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a tag: " \
+                --preview='git show --color=always {1}' \
+                --pointer '  '
+        }
+
+        tag_list=$(git tag -l)
+
+        if [[ -z $tag_list ]]; then
+            echo -e "\e[91m\e[1mError: No tags found in the repository.\e[0m"
+            return 1
+        fi
+
+        selected_tag=$(echo "$tag_list" | __fzf-exec)
+        [[ -z $selected_tag ]] && return 1
+
+        # Extract the short SHA from the selected tag (herestrings)
+        tag_sha=$(git rev-parse "$selected_tag")
+
+        # Return the short SHA
+        echo "$tag_sha"
+    }
 
     # TODO: Switch cases here
 }
