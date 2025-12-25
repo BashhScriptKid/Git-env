@@ -899,6 +899,7 @@ check_git_repository() {
 __check_fzf() {
     if ! command -v fzf &>/dev/null; then
         echo -e "\e[93m\e[1mWarning: You're accessing fzf-based features but it's not installed on your system! The command name should've been obvious though :/ \e[0m"
+        return 1
     fi
 }
 
