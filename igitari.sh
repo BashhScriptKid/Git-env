@@ -903,7 +903,9 @@ __check_fzf() {
 }
 
 # Override normal fzf for git-specialised operations
-fzf() {
+# shellcheck disable=SC2016
+# shellcheck disable=SC2329
+fzfg() {
     __check_fzf || return 1
 
     fzf_logcommits() {
