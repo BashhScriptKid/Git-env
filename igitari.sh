@@ -932,10 +932,17 @@ fzf() {
         selected_commit=$(git log --oneline --color=always | __fzf-exec)
 
         # Extract the short SHA from the selected commit
-        short_sha=$(echo "$selected_commit" | cut -d' ' -f1)
+        short_sha=${selected_commit%% *}
 
-        # Return the short SHA
-        echo "$short_sha"
+        # Return the requested value, short_sha by default
+        case "$1" in
+        sha)       echo "$short_sha" ;;
+        message)   git show -s --format='%s' "$short_sha" ;;
+        diffs)     git show --color=always "$short_sha" ;;
+        *)         echo "$short_sha" ;;
+        esac
+    }
+
     }
 
     fzf_stashlist() {
@@ -952,10 +959,14 @@ fzf() {
         selected_stash=$(git stash list | __fzf-exec)
 
         # Extract the short SHA from the selected stash (strip trailing colon)
-        short_sha=$(echo "$selected_stash" | cut -d' ' -f1 | sed 's/:.*//')
+        stash_ref=$(echo "$selected_stash" | cut -d' ' -f1 | sed 's/:.*//')
 
-        # Return the short SHA
-        echo "$short_sha"
+        case $1 in
+            ref)  echo "$stash_ref" ;;
+            diff) git stash show -p "$stash_ref" ;;
+            name) git stash show -s --format='%s' "$stash_ref" ;;
+            *)    echo "$stash_ref" ;;
+        esac
     }
 
     fzf_dangles() {
@@ -976,10 +987,22 @@ fzf() {
         [[ -z $selected_object ]] && return 1
 
         # Extract the short SHA from the selected commit (herestrings)
-        object_sha=$(awk '{print $2}' <<<"$selected_object")
+        read object_type object_sha <<< "$selected_object"
 
-        # Return the short SHA
-        echo "$object_sha"
+        case $1 in
+          sha) echo "$object_sha" ;;
+          type) echo "$object_type" ;;
+          content) git show --color=always "$object_sha" 2>/dev/null ;;
+          message)
+              if [[ $object_type == commit ]]; then
+                  git log -1 --format='%s' "$object_sha" 2>/dev/null
+              else
+                  echo "<Expected commit object; got $object_type instead.>" 1>&2
+              fi
+              ;;
+          *) echo "$object_sha" ;;
+        esac
+
     }
 
     fzf_tags() {
@@ -1005,8 +1028,12 @@ fzf() {
         # Extract the short SHA from the selected tag (herestrings)
         tag_sha=$(git rev-parse "$selected_tag")
 
-        # Return the short SHA
-        echo "$tag_sha"
+        case $1 in
+          sha)  echo "$tag_sha" ;;
+          name) echo "$selected_tag" ;;
+          *)    echo "$tag_sha" ;;
+        esac
+
     }
 
     # TODO: Switch cases here
