@@ -1159,6 +1159,19 @@ fzf() {
     }
 
     # TODO: Switch cases here
+    case $1 in
+      commits)   fzf_logcommits $2 ;;
+      tags)      fzf_logtags $2 ;;
+      reflogs)   fzf_logreflogs $2 ;;
+      staged)    fzf_stagedfile ;;
+      unstaged)  fzf_unstagedfile ;;
+      tracked)   fzf_trackedfile ;;
+      untracked) fzf_untrackedfile ;;
+      stashes)   fzf_stash $2 ;;
+      dangling)  fzf_dangles $2 ;;
+      *) echo "Invalid command" ;;
+    esac
+
 }
 
 # Open repository in web browser
