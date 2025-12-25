@@ -901,23 +901,32 @@ __check_fzf() {
         echo -e "\e[93m\e[1mWarning: You're accessing fzf-based features but it's not installed on your system! The command name should've been obvious though :/ \e[0m"
         return 1
     fi
+
 }
 
 # Override normal fzf for git-specialised operations
 # shellcheck disable=SC2016
 # shellcheck disable=SC2329
-fzfg() {
+# fzf [type] [return]
+fzf() {
     __check_fzf || return 1
+
+    sys_fzf=$(which fzf)
+
+    # Apparently you can't easily use a variable and suddenly use it as a command
+    sys_fzf() {
+        "$sys_fzf" "$@"
+    }
 
     fzf_logcommits() {
 
         __fzf-exec() {
-            fzf --height=25% \
-                --layout=reverse \
-                --ansi \
-                --prompt "Select a commit: " \
-                --preview='git show --color=always $(echo {} | cut -d" " -f1)' \
-                --pointer '  '
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --prompt "Select a commit: " \
+                    --preview='git show --color=always {1}' \
+                    --pointer '  '
         }
 
         selected_commit=$(git log --oneline --color=always | __fzf-exec)
@@ -932,12 +941,12 @@ fzfg() {
     fzf_stashlist() {
 
         __fzf-exec() {
-            fzf --height=100% \
-                --layout=reverse \
-                --ansi \
-                --prompt "Select a stash: " \
-                --preview='git stash show --color=always $(echo {} | cut -d" " -f1)' \
-                --pointer '  '
+            sys_fzf --height=25% \
+                    --layout=reverse \
+                    --ansi \
+                    --prompt "Select a stash: " \
+                    --preview='git stash show --color=always {1}' \
+                    --pointer '  '
         }
 
         selected_stash=$(git stash list | __fzf-exec)
@@ -950,8 +959,10 @@ fzfg() {
     }
 
     fzf_dangles() {
+
+        # 100% height is intentional to allow better previews
         __fzf-exec() {
-            fzf --height=25% \
+            sys_fzf --height=100% \
                 --layout=reverse \
                 --ansi \
                 --prompt "Select a dangling object: " \
@@ -973,7 +984,7 @@ fzfg() {
 
     fzf_tags() {
         __fzf-exec() {
-            fzf --height=25% \
+            sys_fzf --height=25% \
                 --layout=reverse \
                 --ansi \
                 --prompt "Select a tag: " \
