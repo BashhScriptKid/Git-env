@@ -1189,11 +1189,11 @@ openweb() {
     log "Base URL: ${remote_url}"
 
     case "$page" in
-    "issues") remote_url="${remote_url}/issues" ;;
-    "pr" | "pull-request") remote_url="${remote_url}/pulls" ;;
-    "wiki") remote_url="${remote_url}/wiki" ;;
-    "settings") remote_url="${remote_url}/settings" ;;
-    "") : ;; # No page specified
+    "issues")              remote_url+="/issues" ;;
+    "pr" | "pull-request") remote_url+="/pulls" ;;
+    "wiki")                remote_url+="/wiki" ;;
+    "settings")            remote_url+="/settings" ;;
+    "")                    : ;; # No page specified
     *) echo "Error: Unknown page '$page'" && return 1 ;;
     esac
 
