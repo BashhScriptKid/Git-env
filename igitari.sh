@@ -1343,10 +1343,16 @@ EOF
                 local args="${cmd#* }"
 
                 # If cmd had no spaces, args will equal cmd (no arguments)
-                [[ "$args" == "$cmd" ]] && args=""
+                # Otherwise, split args into arrays to ensure word splitting
+                if ! [[ "$args" == "$cmd" ]]; then
+                    IFS=' ' read -r -a args <<< "$args"
+                else
+                    args=()
+                fi
 
                 # Call the function with args
-                $fn $args # Don't quote $args - we want word splitting
+                # shellcheck disable=SC2086
+                $fn ${args[@]} # Don't quote $args - we want word splitting
                 exit_code=$?
                 [[ $exit_code -eq 0 ]] && history -s "${cmd}"
                 return $exit_code
