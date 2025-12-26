@@ -1,4 +1,4 @@
-#!/bin/bash -i
+#!/usr/bin/env -S bash -i
 
 ##==============================================================================
 ## Igitari — A kindly powerful Git companion
