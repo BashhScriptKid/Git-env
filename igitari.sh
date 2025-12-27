@@ -424,17 +424,17 @@ setup_custom_tab_completion() {
             local completion_array=("${completions[@]}")
             local num_completions=${#completion_array[@]}
 
-            if [[ $num_completions -eq 1 ]]; then
+            if ((num_completions == 1)); then
                 # Single completion - insert it
                 READLINE_LINE="${line:0:$word_start}${completion_array[0]}${line:$point}"
                 READLINE_POINT=$((word_start + ${#completion_array[0]}))
 
-            elif [[ $num_completions -gt 1 ]]; then
+            elif ((num_completions > 1)); then
                 # Multiple completions - find common prefix
                 local common_prefix
                 common_prefix=$(find_common_prefix "${completion_array[@]}")
 
-                if [[ -n "$common_prefix" && ${#common_prefix} -gt ${#current_word} ]]; then
+                if [[ -n "$common_prefix" && (( ${#common_prefix} > ${#current_word} )) ]]; then
                     # Complete to common prefix
                     READLINE_LINE="${line:0:$word_start}${common_prefix}${line:$point}"
                     READLINE_POINT=$((word_start + ${#common_prefix}))
@@ -452,7 +452,7 @@ setup_custom_tab_completion() {
         local num_completions=${#completions[@]}
         local response="Y"
 
-        if [[ $num_completions -gt 10 ]]; then
+        if (( num_completions > 10 )); then
             echo "Display all $num_completions possibilities? (y or n)"
             read -r -n1 -s response
         fi
@@ -470,23 +470,23 @@ setup_custom_tab_completion() {
 
         # Find longest completion
         for comp in "${completions[@]}"; do
-            [[ ${#comp} -gt $max_len ]] && max_len=${#comp}
+            (( ${#comp} > max_len )) && max_len=${#comp}
         done
 
         local col_width=$((max_len + 2))
         local num_cols=$((cols / col_width))
-        [[ $num_cols -lt 1 ]] && num_cols=1
+        ((num_cols < 1)) && num_cols=1
 
         # Print in columns
         local count=0
         for comp in "${completions[@]}"; do
             printf "%-${col_width}s" "$comp"
             ((count++))
-            if [[ $((count % num_cols)) -eq 0 ]]; then
+            if ((count % num_cols == 0)); then
                 echo
             fi
         done
-        [[ $((count % num_cols)) -ne 0 ]] && echo
+        ((count % num_cols != 0)) && echo
     }
 
     # Bind Tab key to completion function
@@ -512,17 +512,17 @@ squash() {
         return 1
     }
 
-    if [[ $# -lt 1 ]]; then
+    if (( $# < 1 )); then
         echo "Usage: squash [amount] [message(optional)]"
         return 1
     fi
 
-    if [[ $n -lt 2 ]]; then
+    if (( n < 2 )); then
         echo "Error: You can't just squash $n commit, how the hell would that supposed to work? At least 2."
         return 1
     fi
 
-    if [[ $(git rev-list --count HEAD) -lt $n ]]; then
+    if (( $(git rev-list --count HEAD) < n )); then
         echo "Error: Only $(git rev-list --count HEAD) commits exist, can't squash more than that."
         return 1
     fi
@@ -582,7 +582,7 @@ squash() {
         git commit -m "$message"
     fi
 
-    if [[ $? -ne 0 ]]; then
+    if (( $? != 0 )); then
         echo "Commit failed. Squashed changes are staged but not committed."
         if $stash_created; then
             echo "Stashed changes NOT restored to avoid confusion."
@@ -631,7 +631,7 @@ discard() {
                 rm -rf "$file"
             fi
 
-            if [[ $? -eq 0 ]]; then
+            if (( $? == 0 )); then
                 echo "File '$file' discarded."
             else
                 echo "Failed to discard file '$file'."
@@ -650,15 +650,15 @@ discard() {
             local mode=$2
             local filelist=$3 # Supposed to be piped from git commands
 
-            [[ $n_file -eq 0 ]] && {
+            [[ $n_file == 0 ]] && {
                 echo "Nothing to discard."
                 return 1
             }
 
             # Plural/Singular text thing
-            if [[ $n_file -eq 1 ]] && [[ -z $mode ]]; then
+            if (( n_file == 1 )) && [[ -z $mode ]]; then
                 echo "This file will be discarded:"
-            elif [[ $n_file -eq 1 ]] && [[ -n $mode ]]; then
+            elif (( n_file == 1 )) && [[ -n $mode ]]; then
                 echo "This $mode file will be discarded:"
             elif [[ -z $mode ]]; then
                 echo "The following $n_file files will be discarded:"
@@ -732,7 +732,7 @@ discard() {
             ;;
         esac
 
-        if [[ $filecount -gt 0 ]] && [[ "$aborted" -ne 1 ]]; then
+        if (( $filecount > 0 )) && (( $aborted == 0 )); then
             [[ -z "$1" ]] && echo "All changes discarded." || echo "All $1 changes discarded."
         fi
 
@@ -752,7 +752,7 @@ reword() {
         return 1
     fi
 
-    if [[ $# -gt 2 ]]; then
+    if (( $# > 2 )); then
         echo "Error: Please put the new commit message in quotes, I can't tell which one is which >.> (Too many arguments)"
         return 1
     fi
@@ -1355,7 +1355,7 @@ EOF
                 # shellcheck disable=SC2086
                 $fn ${args[@]} # Don't quote $args - we want word splitting
                 exit_code=$?
-                [[ $exit_code -eq 0 ]] && history -s "${cmd}"
+                (( exit_code == 0 )) && history -s "${cmd}"
                 return $exit_code
             fi
         done
@@ -1368,7 +1368,7 @@ EOF
     esac
 
     local exit_code=$?
-    [[ $exit_code -eq 0 ]] && history -s "${cmd}"
+    (( exit_code == 0 )) && history -s "${cmd}"
     return $exit_code
 }
 
@@ -1475,7 +1475,7 @@ setup_command_history() {
 setup_rc_file() {
     # shellcheck source=/dev/null
     if [[ -f "$RC_FILE" ]]; then
-        if [[ ${NO_SOURCING} -eq 0 ]]; then
+        if (( NO_SOURCING == 0 )); then
             log n "Sourcing $RC_FILE..."
             if source "$RC_FILE"; then
                 log p "ok."
@@ -1484,7 +1484,7 @@ setup_rc_file() {
                 echo "Warning: Error sourcing $RC_FILE. Continuing anyway."
             fi
         fi
-    elif [[ -f "$GITSH_RC_FILE" && ${PRINT_HEADER} -eq 1 ]]; then
+    elif [[ -f "$GITSH_RC_FILE" && (( PRINT_HEADER == 1 )) ]]; then
         # Offer to migrate from GitSh
         cat <<EOF
 Found GitSh configuration file!
@@ -1576,10 +1576,10 @@ generate_prompt() {
 
         # Add markers per dirty flag
         dirty_markers="" # Reset first
-        if [[ ${NO_MARKERS} -ne 1 ]]; then
-            [[ ${REPO_IS_DIRTY} -eq 1 ]] && dirty_markers+="\e[91m*\e[0m"
-            [[ ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]] && dirty_markers+="\e[93m^\e[0m"
-            [[ ${REPO_STASH_DIRTY} -eq 1 ]] && dirty_markers+="\e[94m_\e[0m"
+        if (( NO_MARKERS != 1 )); then
+            (( REPO_IS_DIRTY == 1 )) && dirty_markers+="\e[91m*\e[0m"
+            (( REPO_IS_DIRTY_AND_STAGED == 1 )) && dirty_markers+="\e[93m^\e[0m"
+            (( REPO_STASH_DIRTY == 1 )) && dirty_markers+="\e[94m_\e[0m"
         fi
 
         # Normalize subdir (remove trailing slash)
@@ -1773,10 +1773,10 @@ Updater() {
 
         # Pipe compare_commithash return code
         local status=$?
-        if [[ $status -eq 1 ]]; then
+        if (( status == 1 )); then
             log "Update available"
             return 255
-        elif [[ $status -eq 0 ]]; then
+        elif (( status == 0 )); then
             log "No update available"
         else
             log "Function returned unexpected status code."
@@ -1787,7 +1787,7 @@ Updater() {
     status=0
     main_checker || status=$?
 
-    if [[ $status -eq 255 ]]; then
+    if (( status != 255 )); then
         main_updater
     fi
 }
@@ -1879,7 +1879,7 @@ main() {
     setup_custom_tab_completion
 
     # Clear initial history anomaly
-    if [[ ${INIT_CLEAR} -eq 0 ]]; then
+    if (( INIT_CLEAR == 0 )); then
         history -c
         INIT_CLEAR=1
         log "Cleared initial history entry"
