@@ -14,8 +14,8 @@ This project is licensed under AGPL-3.0-or-later.
 ## Philosophy: Kindly Powerful
 Igitari aims to:
 - **Reduce friction** in daily Git workflows
-- **Provide safety nets** for common pitfalls (like detached HEAD mode)
-- **Stays out of your way** when you know what you're doing
+- **Provide safety nets** for common pitfalls
+- **Stay out of your way** when you know what you're doing
 - **Remain lightweight** and dependency-free
 
 
@@ -33,8 +33,8 @@ Igitari aims to:
 - Cross-platform (Linux, macOS, Windows WSL)
 
 > [!WARNING]
-> This script is mainly tested on Linux.
-> If you see any discrepancies when using it on other platforms, please report in the issues tab.
+> Igitari is primarily tested on Linux.
+> Behavior on other platforms may vary—please report issues if you encounter discrepancies.
 
 ## Installation
 
@@ -65,6 +65,7 @@ sudo chmod +x /usr/bin/igitari
 
 **Optional:**
 - Lazygit (for TUI integration)
+- FZF (For FZF-based query for commits, stashes, etc)
 
 ## Usage
 Start Igitari:
@@ -139,10 +140,9 @@ rm $(which igitari)
 ## License
 AGPL-3.0-or-later © 2025 BashhScriptKid
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Igitari is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
-See the full license in the script header or at https://www.gnu.org/licenses/.
-
+See the full license in the script header or at https://www.gnu.org/licenses/
 ## Why AGPL?
 Igitari uses AGPL-3.0-or-later to ensure it remains free and open. If you modify and distribute Igitari (including as part of a web service), you must share your changes. This prevents SaaS exploitation while encouraging community improvements.
 

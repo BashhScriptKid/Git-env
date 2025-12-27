@@ -4,7 +4,7 @@
 ## Igitari — A kindly powerful Git companion
 ## Make Git approachable without sacrificing its power
 ##==============================================================================
-## Version: 3.5.5
+## Version: 3.10.9
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
 ## Copyright (C) 2025 BashhScriptKid
 ## SPDX-License-Identifier: AGPL-3.0-or-later
@@ -30,7 +30,7 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly IGITARI_VERSION="3.5.5"
+readonly IGITARI_VERSION="3.10.9"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
@@ -177,19 +177,20 @@ show_version() {
 Igitari version ${RUNTIME_VERSION}
 
 About:
-    A kindly powerful Git companion,
-    born from the simple desire to type 'git' less often.
+    A lightweight Git companion
+    designed to reduce friction and repetitive commands.
 
-    Make Git approachable without sacrificing its power —
-    because you shouldn't fight your tools to do great work.
+    It keeps Git approachable
+    while staying close to how Git actually works.
 
-    Lightweight, portable, and almost dependency-free.
-    The Git shell that watches your back for silly mistakes.
+    Portable, nearly dependency-free,
+    and focused on preventing common foot-guns.
 
     Repository: https://github.com/BashhScriptKid/igitari
+
     License: AGPL-3.0-or-later
 
-    Crafted in Bash by BashhScriptKid
+    Written in Bash by BashhScriptKid
 EOF
     #'
 }
@@ -434,7 +435,7 @@ setup_custom_tab_completion() {
                 local common_prefix
                 common_prefix=$(find_common_prefix "${completion_array[@]}")
 
-                if [[ -n "$common_prefix" && (( ${#common_prefix} > ${#current_word} )) ]]; then
+                if [[ -n "$common_prefix" && ((${#common_prefix} > ${#current_word})) ]]; then
                     # Complete to common prefix
                     READLINE_LINE="${line:0:$word_start}${common_prefix}${line:$point}"
                     READLINE_POINT=$((word_start + ${#common_prefix}))
@@ -452,7 +453,7 @@ setup_custom_tab_completion() {
         local num_completions=${#completions[@]}
         local response="Y"
 
-        if (( num_completions > 10 )); then
+        if ((num_completions > 10)); then
             echo "Display all $num_completions possibilities? (y or n)"
             read -r -n1 -s response
         fi
@@ -470,7 +471,7 @@ setup_custom_tab_completion() {
 
         # Find longest completion
         for comp in "${completions[@]}"; do
-            (( ${#comp} > max_len )) && max_len=${#comp}
+            ((${#comp} > max_len)) && max_len=${#comp}
         done
 
         local col_width=$((max_len + 2))
@@ -512,17 +513,17 @@ squash() {
         return 1
     }
 
-    if (( $# < 1 )); then
+    if (($# < 1)); then
         echo "Usage: squash [amount] [message(optional)]"
         return 1
     fi
 
-    if (( n < 2 )); then
+    if ((n < 2)); then
         echo "Error: You can't just squash $n commit, how the hell would that supposed to work? At least 2."
         return 1
     fi
 
-    if (( $(git rev-list --count HEAD) < n )); then
+    if (($(git rev-list --count HEAD) < n)); then
         echo "Error: Only $(git rev-list --count HEAD) commits exist, can't squash more than that."
         return 1
     fi
@@ -582,7 +583,7 @@ squash() {
         git commit -m "$message"
     fi
 
-    if (( $? != 0 )); then
+    if (($? != 0)); then
         echo "Commit failed. Squashed changes are staged but not committed."
         if $stash_created; then
             echo "Stashed changes NOT restored to avoid confusion."
@@ -631,7 +632,7 @@ discard() {
                 rm -rf "$file"
             fi
 
-            if (( $? == 0 )); then
+            if (($? == 0)); then
                 echo "File '$file' discarded."
             else
                 echo "Failed to discard file '$file'."
@@ -656,9 +657,9 @@ discard() {
             }
 
             # Plural/Singular text thing
-            if (( n_file == 1 )) && [[ -z $mode ]]; then
+            if ((n_file == 1)) && [[ -z $mode ]]; then
                 echo "This file will be discarded:"
-            elif (( n_file == 1 )) && [[ -n $mode ]]; then
+            elif ((n_file == 1)) && [[ -n $mode ]]; then
                 echo "This $mode file will be discarded:"
             elif [[ -z $mode ]]; then
                 echo "The following $n_file files will be discarded:"
@@ -732,7 +733,7 @@ discard() {
             ;;
         esac
 
-        if (( $filecount > 0 )) && (( $aborted == 0 )); then
+        if (($filecount > 0)) && (($aborted == 0)); then
             [[ -z "$1" ]] && echo "All changes discarded." || echo "All $1 changes discarded."
         fi
 
@@ -752,7 +753,7 @@ reword() {
         return 1
     fi
 
-    if (( $# > 2 )); then
+    if (($# > 2)); then
         echo "Error: Please put the new commit message in quotes, I can't tell which one is which >.> (Too many arguments)"
         return 1
     fi
@@ -922,11 +923,11 @@ fzf() {
 
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --prompt "Select a commit: " \
-                    --preview='git show --color=always {1}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a commit: " \
+                --preview='git show --color=always {1}' \
+                --pointer '  '
         }
 
         selected_commit=$(git log --oneline --color=always | __fzf-exec)
@@ -936,10 +937,10 @@ fzf() {
 
         # Return the requested value, short_sha by default
         case "$1" in
-        sha)       echo "$short_sha" ;;
-        message)   git show -s --format='%s' "$short_sha" ;;
-        diffs)     git show --color=always "$short_sha" ;;
-        *)         echo "$short_sha" ;;
+        sha) echo "$short_sha" ;;
+        message) git show -s --format='%s' "$short_sha" ;;
+        diffs) git show --color=always "$short_sha" ;;
+        *) echo "$short_sha" ;;
         esac
     }
 
@@ -947,11 +948,11 @@ fzf() {
 
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --prompt "Search last HEAD location: " \
-                    --preview='git show --color=always {1}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --prompt "Search last HEAD location: " \
+                --preview='git show --color=always {1}' \
+                --pointer '  '
         }
 
         selected_location=$(git reflog --color=always | __fzf-exec)
@@ -961,10 +962,10 @@ fzf() {
 
         # Return the requested value, short_sha by default
         case "$1" in
-        sha)       echo "$short_sha" ;;
-        message)   git show -s --format='%s' "$short_sha" ;;
-        diffs)     git show --color=always "$short_sha" ;;
-        *)         echo "$short_sha" ;;
+        sha) echo "$short_sha" ;;
+        message) git show -s --format='%s' "$short_sha" ;;
+        diffs) git show --color=always "$short_sha" ;;
+        *) echo "$short_sha" ;;
         esac
     }
 
@@ -972,11 +973,11 @@ fzf() {
 
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --prompt "Select a stash: " \
-                    --preview='git stash show --color=always {1}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --prompt "Select a stash: " \
+                --preview='git stash show --color=always {1}' \
+                --pointer '  '
         }
         stash_list=$(git stash list)
 
@@ -991,23 +992,23 @@ fzf() {
         stash_ref=$(echo "$selected_stash" | cut -d' ' -f1 | sed 's/:.*//')
 
         case $1 in
-            ref)  echo "$stash_ref" ;;
-            diff) git stash show -p "$stash_ref" ;;
-            name) git stash show -s --format='%s' "$stash_ref" ;;
-            *)    echo "$stash_ref" ;;
+        ref) echo "$stash_ref" ;;
+        diff) git stash show -p "$stash_ref" ;;
+        name) git stash show -s --format='%s' "$stash_ref" ;;
+        *) echo "$stash_ref" ;;
         esac
     }
 
     # the next 4 function are copy-pasted, which I do not give a fuck about to abstract
-    fzf_stagedfile(){
+    fzf_stagedfile() {
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --multi \
-                    --prompt "Select staged files: " \
-                    --preview 'git diff --cached --color=always {}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --multi \
+                --prompt "Select staged files: " \
+                --preview 'git diff --cached --color=always {}' \
+                --pointer '  '
         }
 
         staged_filelist=$(git diff --cached --name-only)
@@ -1022,15 +1023,15 @@ fzf() {
         echo "$selected_files"
     }
 
-    fzf_unstagedfile(){
+    fzf_unstagedfile() {
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --multi \
-                    --prompt "Select unstaged files: " \
-                    --preview 'git diff --color=always {}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --multi \
+                --prompt "Select unstaged files: " \
+                --preview 'git diff --color=always {}' \
+                --pointer '  '
         }
 
         unstaged_filelist=$(git diff --name-only)
@@ -1045,15 +1046,15 @@ fzf() {
         echo "$selected_files"
     }
 
-    fzf_trackedfile(){
+    fzf_trackedfile() {
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --multi \
-                    --prompt "Select tracked files: " \
-                    --preview 'git diff --color=always {}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --multi \
+                --prompt "Select tracked files: " \
+                --preview 'git diff --color=always {}' \
+                --pointer '  '
         }
 
         tracked_filelist=$(git ls-files)
@@ -1068,15 +1069,15 @@ fzf() {
         echo "$selected_files"
     }
 
-    fzf_untrackedfile(){
+    fzf_untrackedfile() {
         __fzf-exec() {
             sys_fzf --height=25% \
-                    --layout=reverse \
-                    --ansi \
-                    --multi \
-                    --prompt "Select untracked files: " \
-                    --preview 'cat {}' \
-                    --pointer '  '
+                --layout=reverse \
+                --ansi \
+                --multi \
+                --prompt "Select untracked files: " \
+                --preview 'cat {}' \
+                --pointer '  '
         }
 
         untracked_filelist=$(git ls-files --others --exclude-standard)
@@ -1113,17 +1114,17 @@ fzf() {
         object_sha=$(echo "$selected_object" | awk '{print $2}')
 
         case $1 in
-          sha) echo "$object_sha" ;;
-          type) echo "$object_type" ;;
-          content) git show --color=always "$object_sha" 2>/dev/null ;;
-          message)
-              if [[ $object_type == commit ]]; then
-                  git log -1 --format='%s' "$object_sha" 2>/dev/null
-              else
-                  echo "<Expected commit object; got $object_type instead.>" 1>&2
-              fi
-              ;;
-          *) echo "$object_sha" ;;
+        sha) echo "$object_sha" ;;
+        type) echo "$object_type" ;;
+        content) git show --color=always "$object_sha" 2>/dev/null ;;
+        message)
+            if [[ $object_type == commit ]]; then
+                git log -1 --format='%s' "$object_sha" 2>/dev/null
+            else
+                echo "<Expected commit object; got $object_type instead.>" 1>&2
+            fi
+            ;;
+        *) echo "$object_sha" ;;
         esac
 
     }
@@ -1152,9 +1153,9 @@ fzf() {
         tag_sha=$(git rev-parse "$selected_tag")
 
         case $1 in
-          sha)  echo "$tag_sha" ;;
-          name) echo "$selected_tag" ;;
-          *)    echo "$tag_sha" ;;
+        sha) echo "$tag_sha" ;;
+        name) echo "$selected_tag" ;;
+        *) echo "$tag_sha" ;;
         esac
 
     }
@@ -1162,16 +1163,16 @@ fzf() {
     returntype=$2
 
     case $1 in
-      commits*)   fzf_logcommits $returntype ;;
-      tags*)      fzf_tags $returntype ;;
-      reflogs*)   fzf_reflogs $returntype ;;
-      staged)    fzf_stagedfile ;;
-      unstaged)  fzf_unstagedfile ;;
-      tracked)   fzf_trackedfile ;;
-      untracked) fzf_untrackedfile ;;
-      stashes*)   fzf_stashlist $returntype ;;
-      dangling*)  fzf_dangles $returntype ;;
-      *) echo "fzf (commits, tags, reflogs, staged, unstaged, tracked, untracked, stashes, dangling) [returns]" 1>&2 && return 1 ;;
+    commits*) fzf_logcommits $returntype ;;
+    tags*) fzf_tags $returntype ;;
+    reflogs*) fzf_reflogs $returntype ;;
+    staged) fzf_stagedfile ;;
+    unstaged) fzf_unstagedfile ;;
+    tracked) fzf_trackedfile ;;
+    untracked) fzf_untrackedfile ;;
+    stashes*) fzf_stashlist $returntype ;;
+    dangling*) fzf_dangles $returntype ;;
+    *) echo "fzf (commits, tags, reflogs, staged, unstaged, tracked, untracked, stashes, dangling) [returns]" 1>&2 && return 1 ;;
     esac
 }
 
@@ -1203,11 +1204,11 @@ openweb() {
     log "Base URL: ${remote_url}"
 
     case "$page" in
-    "issues")              remote_url+="/issues" ;;
+    "issues") remote_url+="/issues" ;;
     "pr" | "pull-request") remote_url+="/pulls" ;;
-    "wiki")                remote_url+="/wiki" ;;
-    "settings")            remote_url+="/settings" ;;
-    "")                    : ;; # No page specified
+    "wiki") remote_url+="/wiki" ;;
+    "settings") remote_url+="/settings" ;;
+    "") : ;; # No page specified
     *) echo "Error: Unknown page '$page'" && return 1 ;;
     esac
 
@@ -1346,7 +1347,7 @@ EOF
                 # If cmd had no spaces, args will equal cmd (no arguments)
                 # Otherwise, split args into arrays to ensure word splitting
                 if ! [[ "$args" == "$cmd" ]]; then
-                    IFS=' ' read -r -a args <<< "$args"
+                    IFS=' ' read -r -a args <<<"$args"
                 else
                     args=()
                 fi
@@ -1355,7 +1356,7 @@ EOF
                 # shellcheck disable=SC2086
                 $fn ${args[@]} # Don't quote $args - we want word splitting
                 exit_code=$?
-                (( exit_code == 0 )) && history -s "${cmd}"
+                ((exit_code == 0)) && history -s "${cmd}"
                 return $exit_code
             fi
         done
@@ -1368,7 +1369,7 @@ EOF
     esac
 
     local exit_code=$?
-    (( exit_code == 0 )) && history -s "${cmd}"
+    ((exit_code == 0)) && history -s "${cmd}"
     return $exit_code
 }
 
@@ -1475,7 +1476,7 @@ setup_command_history() {
 setup_rc_file() {
     # shellcheck source=/dev/null
     if [[ -f "$RC_FILE" ]]; then
-        if (( NO_SOURCING == 0 )); then
+        if ((NO_SOURCING == 0)); then
             log n "Sourcing $RC_FILE..."
             if source "$RC_FILE"; then
                 log p "ok."
@@ -1484,7 +1485,7 @@ setup_rc_file() {
                 echo "Warning: Error sourcing $RC_FILE. Continuing anyway."
             fi
         fi
-    elif [[ -f "$GITSH_RC_FILE" && (( PRINT_HEADER == 1 )) ]]; then
+    elif [[ -f "$GITSH_RC_FILE" && ((PRINT_HEADER == 1)) ]]; then
         # Offer to migrate from GitSh
         cat <<EOF
 Found GitSh configuration file!
@@ -1576,10 +1577,10 @@ generate_prompt() {
 
         # Add markers per dirty flag
         dirty_markers="" # Reset first
-        if (( NO_MARKERS != 1 )); then
-            (( REPO_IS_DIRTY == 1 )) && dirty_markers+="\e[91m*\e[0m"
-            (( REPO_IS_DIRTY_AND_STAGED == 1 )) && dirty_markers+="\e[93m^\e[0m"
-            (( REPO_STASH_DIRTY == 1 )) && dirty_markers+="\e[94m_\e[0m"
+        if ((NO_MARKERS != 1)); then
+            ((REPO_IS_DIRTY == 1)) && dirty_markers+="\e[91m*\e[0m"
+            ((REPO_IS_DIRTY_AND_STAGED == 1)) && dirty_markers+="\e[93m^\e[0m"
+            ((REPO_STASH_DIRTY == 1)) && dirty_markers+="\e[94m_\e[0m"
         fi
 
         # Normalize subdir (remove trailing slash)
@@ -1773,10 +1774,10 @@ Updater() {
 
         # Pipe compare_commithash return code
         local status=$?
-        if (( status == 1 )); then
+        if ((status == 1)); then
             log "Update available"
             return 255
-        elif (( status == 0 )); then
+        elif ((status == 0)); then
             log "No update available"
         else
             log "Function returned unexpected status code."
@@ -1787,7 +1788,7 @@ Updater() {
     status=0
     main_checker || status=$?
 
-    if (( status != 255 )); then
+    if ((status != 255)); then
         main_updater
     fi
 }
@@ -1879,7 +1880,7 @@ main() {
     setup_custom_tab_completion
 
     # Clear initial history anomaly
-    if (( INIT_CLEAR == 0 )); then
+    if ((INIT_CLEAR == 0)); then
         history -c
         INIT_CLEAR=1
         log "Cleared initial history entry"
