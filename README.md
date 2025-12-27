@@ -1,5 +1,5 @@
 # Igitari
-*A kindly powerful Git companion*
+*A kindly powerful Git companion* (formerly known as 'Git-env')
 
 > [!IMPORTANT]
 > The project currently only focuses on mono-master branch. I see no reason to modularise it further yet.
@@ -16,8 +16,8 @@ Igitari aims to:
 - **Reduce friction** in daily Git workflows
 - **Provide safety nets** for common pitfalls
 - **Stay out of your way** when you know what you're doing
-- **Remain lightweight** and dependency-free
-
+- **Remain lightweight and modular** in its internal design
+- **Rely on as few required dependencies as possible**
 
 ## Features
 - Interactive Git shell with intelligent tab completion
