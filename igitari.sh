@@ -30,7 +30,7 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly IGITARI_VERSION="3.10.9"
+readonly IGITARI_VERSION="3.10.10"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
@@ -1804,6 +1804,9 @@ do_update() {
         # Optionally also check remote URL
         REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
         if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Igitari ]]; then
+            echo "NOTE: The current updater system is incomplete and are not developed actively due to small userbase."
+            echo "      You can update Igitari by running the installation snippet in the repository."
+            return 0
             Updater &
         fi
     fi
