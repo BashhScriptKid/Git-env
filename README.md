@@ -1,8 +1,36 @@
 # Igitari
 *A kindly powerful Git companion* (formerly known as 'Git-env')
 
+<p align="center">
+    <img src="https://img.shields.io/badge/Version-3.10.10-blue">
+</p>
+
 > [!IMPORTANT]
-> The project currently only focuses on mono-master branch. I see no reason to modularise it further yet.
+> The project currently only focuses and maintained on mono-master branch. (I see no reason to modularise it further yet.)
+> 
+> **Igitari is currently not actively developed, but will be maintained.** Look at [Feature Requests](#feature-requests).
+
+## Feature Requests
+
+Igitari is currently feature-complete for its core goals. If you have ideas for new features:
+
+1. **Check existing issues** to avoid duplicates
+2. **Open an issue** describing:
+   - The problem you're trying to solve
+   - Your current workflow that's painful
+   - How the feature would help
+3. **👍 React to existing requests** you'd find useful
+
+Features are prioritized by:
+- Real-world pain points (not theoretical nice-to-haves)
+- Alignment with Igitari's philosophy of being more as a helper than a wrapper
+- Complexity vs. benefit tradeoff
+
+**Note:** Igitari stays lightweight and focused. Features that introduce heavy dependencies, platform-specific APIs (GitHub/GitLab), or significant hidden complexity are likely out of scope.
+
+Final decisions are made by the maintainer, and may take personal interest and available time into account.
+
+Pull requests are welcomed too!
 
 ## Introduction
 Igitari is a Git shell companion born from the simple desire to type 'git' less often. It's designed to make Git approachable without sacrificing its power — because you shouldn't have to fight your tools to do great work.
@@ -148,3 +176,4 @@ Igitari uses AGPL-3.0-or-later to ensure it remains free and open. If you modify
 
 ---
 Hope this is useful!
+
