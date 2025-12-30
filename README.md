@@ -57,7 +57,7 @@ Igitari aims to:
 - Operator support (`&&`, `||`, `;`)
 - LazyGit integration (Ctrl+G when available)
 - Web repository opening (`openweb` command)
-- Self-updating system
+- ~~Self-updating system~~ (Currently unmaintained due to small user base)
 - Cross-platform (Linux, macOS, Windows WSL)
 
 > [!WARNING]
