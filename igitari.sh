@@ -895,8 +895,6 @@ check_git_repository() {
 
 ## FZF-dependent features
 # Requires fzf to be installed on system but will not affect overall functionality.
-
-# Is going to be used in multiple fzf-based helpers
 __check_fzf() {
     if ! command -v fzf &>/dev/null; then
         echo -e "\e[93m\e[1mWarning: You're accessing fzf-based features but it's not installed on your system! The command name should've been obvious though :/ \e[0m"
@@ -917,6 +915,20 @@ fzf() {
     # Apparently you can't easily use a variable and suddenly use it as a command
     sys_fzf() {
         "$sys_fzf" "$@"
+    }
+
+    build_helptext() {
+        helptext_top="fzf (commits | tags | reflogs | staged | unstaged | tracked | untracked | stashes | dangling) [returns]\n"
+        helptext_returntype=("Return types:"
+            "   commits (sha | message | diffs)"
+            "   tags (sha | name)"
+            "   reflogs (sha | message | diffs)"
+            "   stashes (ref | diff | name)"
+            "   dangling (sha | type | content | message)"
+            "\nstaged/unstaged/tracked/untracked doesn't take a return type")
+
+        # Join with newlines
+        printf "%b\n" "$helptext_top" "${helptext_returntype[@]}"
     }
 
     fzf_logcommits() {
@@ -1172,7 +1184,7 @@ fzf() {
     untracked) fzf_untrackedfile ;;
     stashes*) fzf_stashlist $returntype ;;
     dangling*) fzf_dangles $returntype ;;
-    *) echo "fzf (commits, tags, reflogs, staged, unstaged, tracked, untracked, stashes, dangling) [returns]" 1>&2 && return 1 ;;
+    *) build_helptext 1>&2 && return 1 ;;
     esac
 }
 
