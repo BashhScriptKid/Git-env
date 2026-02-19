@@ -4,7 +4,7 @@
 ## Igitari — A kindly powerful Git companion
 ## Make Git approachable without sacrificing its power
 ##==============================================================================
-## Version: 3.10.11
+## Version: 3.11.0
 ## Author: BashhScriptKid <contact@bashh.slmail.me>
 ## Copyright (C) 2025 BashhScriptKid
 ## SPDX-License-Identifier: AGPL-3.0-or-later
@@ -44,7 +44,7 @@
 #------------------------------------------------------------------------------
 # Configuration Constants
 #------------------------------------------------------------------------------
-readonly IGITARI_VERSION="3.10.11"
+readonly IGITARI_VERSION="3.11.0"
 
 readonly GITSH_RC_FILE="${HOME}/.gitshrc"
 
