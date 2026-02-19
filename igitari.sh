@@ -219,17 +219,52 @@ EOF
 
 # Process command line arguments
 process_arguments() {
+
+    # NOTE:    When using this function, order matters!
+    #          Make sure to prioritise the right argument, especially if your argument is prone to collisions.
+    #          Use 'a' in the second argument to allow blank arguments, otherwise it will be treated as an error.
+    #
+    # RETURNS: 0 if input matches any generated variant, 1 otherwise.
+    #
+    # USAGE:   validate_arg "$1" [a] "canonical1" "canonical2" ...
+    #
+    # EXAMPLE: validate_arg "$1" "help" "h"        # --help, -h, /HELP, /H
+    #          validate_arg "$1" a "path" "dir"     # allows blank, --path, -p, /PATH, /P, --dir, -d, /DIR, /D
+    validate_arg() {
+        local input="$1"
+        shift
+        local allowBlankArg=$([[ "$1" == 'a' ]] && echo "0" || echo "1")
+        shift
+        local -a canonical=("$@") # all canonical names passed by developer
+
+        if [[ -z "$input" && $allowBlankArg -eq 1 ]] || [[ ${#canonical[@]} -eq 0 ]]; then
+            echo "Error: Argument cannot be empty"
+            return 1
+        fi
+
+        local -a variants=()
+        for name in "${canonical[@]}"; do
+            variants+=("--${name}")      # UNIX long
+            variants+=("-${name:0:1}")   # UNIX short
+            variants+=("/${name^^}")     # DOS long
+            variants+=("/${name^^:0:1}") # DOS short
+            variants+=("${name}")        # bare word
+        done
+
+        for variant in "${variants[@]}"; do
+            [[ "$input" == "$variant" ]] && return 0
+        done
+        return 1
+    }
+
     while [[ $# -gt 0 ]]; do
-        case "$1" in
-        "--help" | "-h" | "/?" | "/HELP" | "/H" | "/help" | "/h")
+        if validate_arg "$1" "help" "h" "?"; then
             show_help
             exit 0
-            ;;
-        "version" | "--version" | "-v" | "/VERSION" | "/version" | "/v")
+        elif validate_arg "$1" "version" "ver"; then
             show_version
             exit 0
-            ;;
-        "--path" | "-p" | "/PATH" | "/P" | "/path" | "/p")
+        elif validate_arg "$1" "path" "p"; then
             shift
             if [[ -z "$1" ]]; then
                 echo "Error: Please put a path after --path, like this: --path /path/to/directory/"
@@ -240,23 +275,19 @@ process_arguments() {
             else
                 TARGET_PATH="$1"
             fi
-            ;;
-        "verbose" | "-V" | "--verbose" | "/VERBOSE" | "/verbose" | "/V")
+        elif validate_arg "$1" "verbose"; then
+            # -v is taken by version, so short form intentionally collides — version wins
             DO_LOGGING=1
             echo "Verbose logging enabled. Debugging time! Or not."
-            ;;
-        "skip-sourcing" | "--skip-sourcing" | "/SKIP-SOURCING")
+        elif validate_arg "$1" "skip-sourcing"; then
             echo "No tab completion? Sure, I guess :/"
             NO_SOURCING=1
-            ;;
-        "--no-header")
+        elif [[ "$1" == "--no-header" ]]; then
             log "Restarting shell without header"
             PRINT_HEADER=0
-            ;;
-        *)
+        else
             echo "Warning: I don't know what $1 is so I'll just ignore it."
-            ;;
-        esac
+        fi
         shift
     done
 }
