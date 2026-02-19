@@ -258,13 +258,13 @@ process_arguments() {
     }
 
     while [[ $# -gt 0 ]]; do
-        if validate_arg "$1" "help" "h" "?"; then
+        if validate_arg "$1" a "help" "h" "?"; then
             show_help
             exit 0
-        elif validate_arg "$1" "version" "ver"; then
+        elif validate_arg "$1" a "version" "ver"; then
             show_version
             exit 0
-        elif validate_arg "$1" "path" "p"; then
+        elif validate_arg "$1" a "path" "p"; then
             shift
             if [[ -z "$1" ]]; then
                 echo "Error: Please put a path after --path, like this: --path /path/to/directory/"
@@ -275,11 +275,11 @@ process_arguments() {
             else
                 TARGET_PATH="$1"
             fi
-        elif validate_arg "$1" "verbose"; then
+        elif validate_arg "$1" a "verbose"; then
             # -v is taken by version, so short form intentionally collides — version wins
             DO_LOGGING=1
             echo "Verbose logging enabled. Debugging time! Or not."
-        elif validate_arg "$1" "skip-sourcing"; then
+        elif validate_arg "$1" a "skip-sourcing"; then
             echo "No tab completion? Sure, I guess :/"
             NO_SOURCING=1
         elif [[ "$1" == "--no-header" ]]; then
