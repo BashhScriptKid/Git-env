@@ -318,7 +318,7 @@ setup_git_completion() {
 setup_custom_tab_completion() {
     [[ ! -t 0 ]] && return # Only for interactive terminals
 
-    # Find common prefix among completions
+    # Helper: find longest common prefix across all completion candidates
     find_common_prefix() {
         local -a completions=("$@")
         local prefix="${completions[0]}"
@@ -327,7 +327,6 @@ setup_custom_tab_completion() {
             local current="${completions[i]}"
             local temp_prefix=""
 
-            # Find common characters from start
             for ((j = 0; j < ${#prefix} && j < ${#current}; j++)); do
                 if [[ "${prefix:$j:1}" == "${current:$j:1}" ]]; then
                     temp_prefix+="${prefix:$j:1}"
@@ -343,128 +342,30 @@ setup_custom_tab_completion() {
         echo "$prefix"
     }
 
-    # Check if line contains remote reference that needs branch completion
+    # Helper: check if the typed line contains a remote name followed by a space,
+    # meaning the next token should be a branch name.
     has_remote_branch_context() {
         local line="$1"
-
-        # Skip openweb commands
         [[ "$line" =~ openweb ]] && return 1
 
-        # Get remotes and check if line contains any
         local remotes
         remotes=$(git remote 2>/dev/null | tr '\n' '|')
-        remotes=${remotes%|} # Remove trailing |
+        remotes=${remotes%|}
 
         [[ -n "$remotes" && "$line" =~ [[:space:]](${remotes})[[:space:]] ]]
     }
 
-    # Main completion function
-    complete_git_env() {
-        local line="${READLINE_LINE}"
-        local point="${READLINE_POINT}"
-
-        # Find word boundaries
-        local word_start=$point
-        while [[ $word_start -gt 0 && "${line:$((word_start - 1)):1}" != " " ]]; do
-            ((word_start--))
-        done
-
-        local current_word="${line:$word_start:$((point - word_start))}"
-        local completions=("")
-
-        # Handle different completion contexts
-        if [[ "$current_word" == \>* ]]; then
-            # Shell command completion (commands prefixed with >)
-            local shell_cmd="${current_word#>}"
-            mapfile -t completions < <(compgen -c "$shell_cmd" | sed 's/^/>/')
-
-        elif [[ "$current_word" == "openweb" ]] || [[ "$line" =~ openweb[[:space:]]+$ ]]; then
-            # Git remote completion for openweb command
-            mapfile -t completions < <(git remote 2>/dev/null || echo "")
-
-        else
-            # Git command completion
-            # Git commands - comprehensive list
-            local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
-            local script_commands="help exit lazygit openweb"
-
-            mapfile -t completions < <(compgen -W "${git_commands} ${script_commands}" -- "${current_word}")
-
-            # Context-specific completions
-            if [[ "$line" =~ "help " ]]; then
-                mapfile -t completions < <(compgen -W "${git_commands}}" -- "${current_word}")
-            elif [[ "$line" =~ (add|rm|mv)[[:space:]] ]]; then
-                # File completions for file-related commands
-                local file_completions
-
-                file_completions=$(compgen -f -- "$current_word")
-
-                completions+=("${file_completions[@]}")
-            elif [[ "$line" =~ (pull|push|fetch)[[:space:]] ]]; then
-                # Remote completions
-                local remote_completions
-
-                remote_completions=$(git remote 2>/dev/null | tr '\n' ' ')
-
-                mapfile -t completions < <(compgen -W "${remote_completions}" -- "${current_word}")
-            # For git config
-            elif [[ "${line}" = "config " ]]; then
-                local config_completion="list get set unset rename-section remove-section edit"
-                local name_completion
-
-                name_completion="$(git config list --name)"
-
-                mapfile -t completions < <(compgen -W "${config_completion} ${name_completion}" -- "${current_word}")
-            elif [[ "$line" =~ "checkout " ]]; then
-                # Branch completions for checkout
-                local branches
-                branches=$(git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u)
-                mapfile -t completions < <(compgen -W "$branches" -- "$current_word")
-            else
-                # File completions for anything else
-                local file_completions
-
-                file_completions=$(compgen -f -- "$current_word")
-            fi
-
-            ## Doesn't work within the else-if chain; keep this way for now
-            # Append remotes with branch names
-            local remotes=$(git remote 2>/dev/null | tr '\n' '|')
-            remotes=${remotes%|} # Remove trailing |
-            if [[ -n "$remotes" && "$line" =~ [[:space:]](${remotes})[[:space:]] && ! "$line" =~ openweb ]]; then
-                local branch_completion=$(git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u | tr '\n' ' ')
-                completions=$(compgen -W "${branch_completion}" -- "${current_word}")
-            fi
-        fi
-
-        # Process completions
-        if ((${#completions[@]} > 0)); then
-            local completion_array=("${completions[@]}")
-            local num_completions=${#completion_array[@]}
-
-            if ((num_completions == 1)); then
-                # Single completion - insert it
-                READLINE_LINE="${line:0:$word_start}${completion_array[0]}${line:$point}"
-                READLINE_POINT=$((word_start + ${#completion_array[0]}))
-
-            elif ((num_completions > 1)); then
-                # Multiple completions - find common prefix
-                local common_prefix
-                common_prefix=$(find_common_prefix "${completion_array[@]}")
-
-                if [[ -n "$common_prefix" && ((${#common_prefix} > ${#current_word})) ]]; then
-                    # Complete to common prefix
-                    READLINE_LINE="${line:0:$word_start}${common_prefix}${line:$point}"
-                    READLINE_POINT=$((word_start + ${#common_prefix}))
-                fi
-
-                # Display available completions
-                display_completions "${completion_array[@]}"
-            fi
-        fi
+    # Helper: return sorted, deduplicated local branch names
+    _get_branches() {
+        git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u
     }
 
-    # Display completions in columns
+    # Helper: return remote names as space-separated string
+    _get_remotes() {
+        git remote 2>/dev/null | tr '\n' ' '
+    }
+
+    # Display completions in columns, asking permission if there are many
     display_completions() {
         local completions=("$@")
         local num_completions=${#completions[@]}
@@ -480,13 +381,9 @@ setup_custom_tab_completion() {
         echo
         echo "Available completions:"
 
-        # Calculate display layout
-        local cols
-        local max_len=0
-
+        local cols max_len=0
         cols=$(tput cols 2>/dev/null || echo 80)
 
-        # Find longest completion
         for comp in "${completions[@]}"; do
             ((${#comp} > max_len)) && max_len=${#comp}
         done
@@ -495,16 +392,189 @@ setup_custom_tab_completion() {
         local num_cols=$((cols / col_width))
         ((num_cols < 1)) && num_cols=1
 
-        # Print in columns
         local count=0
         for comp in "${completions[@]}"; do
             printf "%-${col_width}s" "$comp"
             ((count++))
-            if ((count % num_cols == 0)); then
-                echo
-            fi
+            ((count % num_cols == 0)) && echo
         done
         ((count % num_cols != 0)) && echo
+    }
+
+    # ---------------------------------------------------------------------------
+    # Main completion function — bound to Tab
+    # ---------------------------------------------------------------------------
+    complete_git_env() {
+        local line="${READLINE_LINE}"
+        local point="${READLINE_POINT}"
+
+        # Locate start of the word being completed
+        local word_start=$point
+        while [[ $word_start -gt 0 && "${line:$((word_start - 1)):1}" != " " ]]; do
+            ((word_start--))
+        done
+
+        local current_word="${line:$word_start:$((point - word_start))}"
+        local -a completions=()
+
+        # Known git commands (porcelain + plumbing)
+        local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
+
+        # Igitari-specific commands exposed to the user
+        local igitari_commands="help exit lazygit openweb squash discard reword fzf"
+
+        # ----------------------------------------------------------------------
+        # Context dispatch — order matters: most specific first
+        # ----------------------------------------------------------------------
+
+        if [[ "$current_word" =~ ^\>_ ]]; then
+            # Trying to complete an internal function, error out!
+            echo "Error: You are trying to complete an internal function." >&2
+            return 1
+        elif [[ "$line" =~ ^\>[^[:space:]] && ! "$line" =~ ^\>.*[[:space:]] ]]; then
+            # Shell passthrough (>cmd): complete against PATH commands
+            local shell_prefix="${current_word#>}"
+            mapfile -t completions < <(compgen -c "$shell_prefix" | sed 's/^/>/')
+        elif [[ "$line" =~ ^\>[^[:space:]]+[[:space:]]+ ]]; then
+            # Shell passthrough (>cmd arg): default to file completions
+            mapfile -t completions < <(compgen -f -- "$current_word")
+
+        elif [[ "$line" =~ ^openweb[[:space:]]+[^[:space:]]+[[:space:]]+ ]]; then
+            # openweb <remote> <page>: complete page subcommands
+            mapfile -t completions < <(compgen -W "issues pr pull-request wiki settings" -- "$current_word")
+
+        elif [[ "$line" =~ ^openweb[[:space:]]+ ]]; then
+            # openweb <remote>: complete remote names
+            mapfile -t completions < <(compgen -W "$(_get_remotes)" -- "$current_word")
+
+        elif [[ "$line" =~ ^(help|bugreport)[[:space:]] ]]; then
+            # help/bugreport: complete git command names
+            mapfile -t completions < <(compgen -W "${git_commands}" -- "$current_word")
+
+        elif [[ "$line" =~ ^(add|rm|mv|restore|diff|show)[[:space:]] ]]; then
+            # File-context commands: complete filenames
+            mapfile -t completions < <(compgen -f -- "$current_word")
+
+        elif [[ "$line" =~ ^(checkout|switch|rebase|cherry-pick|merge|revert)[[:space:]] ]]; then
+            _fzf_specialcompletion() {
+                local prompt="${1:-Select ref: }"
+
+                {
+                    _get_branches | sed 's/^* /(Current branch) /'
+                    git tag -l 2>/dev/null
+                    git log --oneline --color=always 2>/dev/null
+                } | command fzf \
+                    --height=40% \
+                    --layout=reverse \
+                    --ansi \
+                    --prompt "$prompt" \
+                    --preview='git show --color=always {1}' \
+                    --pointer '  '
+            }
+
+            if __check_fzf 2>/dev/null; then
+                local selected
+                selected=$(_fzf_specialcompletion "Select branch/tag/commit: ")
+                if [[ -n "$selected" ]]; then
+                    READLINE_LINE="${line:0:$word_start}${selected}${line:$point}"
+                    READLINE_POINT=$((word_start + ${#selected}))
+                fi
+                return
+            else
+                # Branch/ref-context commands: complete branches then tags
+                local branches tags
+                branches=$(_get_branches)
+                tags=$(git tag -l 2>/dev/null | tr '\n' ' ')
+                mapfile -t completions < <(compgen -W "${branches} ${tags}" -- "$current_word")
+            fi
+
+        elif [[ "$line" =~ ^(pull|push|fetch)[[:space:]] ]]; then
+            # Remote then branch: if a remote is already typed, complete branches
+            if has_remote_branch_context "$line"; then
+                mapfile -t completions < <(compgen -W "$(_get_branches)" -- "$current_word")
+            else
+                mapfile -t completions < <(compgen -W "$(_get_remotes)" -- "$current_word")
+            fi
+
+        elif [[ "$line" =~ ^remote[[:space:]] ]]; then
+            # remote subcommands
+            mapfile -t completions < <(compgen -W "add remove rename set-url set-head prune update show" -- "$current_word")
+
+        elif [[ "$line" =~ ^branch[[:space:]] ]]; then
+            # branch subcommands and existing branches
+            local branch_flags="--delete --force --move --copy --list --remotes --all"
+            mapfile -t completions < <(compgen -W "${branch_flags} $(_get_branches)" -- "$current_word")
+
+        elif [[ "$line" =~ ^stash[[:space:]] ]]; then
+            # stash subcommands
+            mapfile -t completions < <(compgen -W "push pop apply drop list show branch clear create store" -- "$current_word")
+
+        elif [[ "$line" =~ ^tag[[:space:]] ]]; then
+            # tag subcommands and existing tags
+            local tag_flags="--annotate --delete --list --force --message"
+            local existing_tags
+            existing_tags=$(git tag -l 2>/dev/null | tr '\n' ' ')
+            mapfile -t completions < <(compgen -W "${tag_flags} ${existing_tags}" -- "$current_word")
+
+        elif [[ "$line" =~ ^config[[:space:]] ]]; then
+            # config: subcommands + existing key names
+            local config_subcmds="list get set unset rename-section remove-section edit"
+            local config_keys
+            config_keys=$(git config --list 2>/dev/null | cut -d= -f1 | tr '\n' ' ')
+            mapfile -t completions < <(compgen -W "${config_subcmds} ${config_keys}" -- "$current_word")
+
+        elif [[ "$line" =~ ^(log|shortlog|diff|show)[[:space:]].*--[[:alpha:]]* ]]; then
+            # Flag completion for log/diff-style commands
+            local log_flags="--oneline --graph --decorate --all --follow --stat --patch --format --since --until --author --grep --no-merges --merges --first-parent --reverse"
+            mapfile -t completions < <(compgen -W "${log_flags}" -- "$current_word")
+
+        elif [[ "$line" =~ ^reword[[:space:]] ]]; then
+            # reword: complete commit hashes/refs
+            local refs
+            refs=$(git log --oneline -20 2>/dev/null | awk '{print $1}')
+            mapfile -t completions < <(compgen -W "${refs}" -- "$current_word")
+
+        elif [[ "$line" =~ ^discard[[:space:]] ]]; then
+            # discard: 'all' keyword + modified filenames
+            local modified_files
+            modified_files=$(git status --porcelain 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
+            mapfile -t completions < <(compgen -W "all ${modified_files}" -- "$current_word")
+
+        elif [[ "$line" =~ ^fzf[[:space:]] ]]; then
+            # fzf type argument
+            mapfile -t completions < <(compgen -W "commits tags reflogs staged unstaged tracked untracked stashes dangling" -- "$current_word")
+
+        elif [[ "$line" =~ ^fzf[[:space:]]+[^[:space:]]+[[:space:]]+ ]]; then
+            # fzf return-type argument
+            mapfile -t completions < <(compgen -W "sha message diffs name ref diff content type" -- "$current_word")
+
+        else
+            # Top-level: complete command names
+            mapfile -t completions < <(compgen -W "${git_commands} ${igitari_commands}" -- "${current_word}")
+        fi
+
+        # ----------------------------------------------------------------------
+        # Apply completions to the readline buffer
+        # ----------------------------------------------------------------------
+        local num_completions=${#completions[@]}
+
+        if ((num_completions == 1)); then
+            # Unambiguous — insert and add trailing space
+            READLINE_LINE="${line:0:$word_start}${completions[0]} ${line:$point}"
+            READLINE_POINT=$((word_start + ${#completions[0]} + 1))
+
+        elif ((num_completions > 1)); then
+            # Ambiguous — complete to common prefix, then show options
+            local common_prefix
+            common_prefix=$(find_common_prefix "${completions[@]}")
+
+            if [[ -n "$common_prefix" && ${#common_prefix} -gt ${#current_word} ]]; then
+                READLINE_LINE="${line:0:$word_start}${common_prefix}${line:$point}"
+                READLINE_POINT=$((word_start + ${#common_prefix}))
+            fi
+
+            display_completions "${completions[@]}"
+        fi
     }
 
     # Bind Tab key to completion function
