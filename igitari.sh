@@ -454,7 +454,7 @@ setup_custom_tab_completion() {
         local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
 
         # Igitari-specific commands exposed to the user
-        local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead"
+        local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead version"
 
         # Git options usable at the top level (passed through to git as-is)
         local git_options="--version --paginate --no-pager --help"
@@ -1541,7 +1541,7 @@ execute_command() {
 EOF
         ;;
 
-    "--version"|"-v")
+    "--version"|"-v"|"version")
         show_version
         ;;
 
