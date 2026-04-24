@@ -568,7 +568,7 @@ setup_custom_tab_completion() {
         elif [[ "$line" =~ ^discard[[:space:]] ]]; then
             # discard: 'all' keyword + modified filenames
             local modified_files
-            modified_files=$(git status --porcelain 2>/dev/null | awk '{print $2}' | tr '\n' ' ')
+            modified_files=$(git status --porcelain 2>/dev/null | cut -c4- | tr '\n' ' ')
             mapfile -t completions < <(compgen -W "all ${modified_files}" -- "$current_word")
 
         elif [[ "$line" =~ ^fzf[[:space:]] ]]; then
