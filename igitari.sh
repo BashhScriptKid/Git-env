@@ -553,6 +553,10 @@ setup_custom_tab_completion() {
             # submodule subcommands
             mapfile -t completions < <(compgen -W "add status init deinit update summary foreach sync absorbgitdirs set-url set-branch" -- "$current_word")
 
+        elif [[ "$line" =~ ^bisect[[:space:]] ]]; then
+            # bisect subcommands
+            mapfile -t completions < <(compgen -W "start bad good skip reset replay log run visualize terms" -- "$current_word")
+
         elif [[ "$line" =~ ^worktree[[:space:]] ]]; then
             # worktree subcommands
             mapfile -t completions < <(compgen -W "add list lock move prune remove unlock" -- "$current_word")
