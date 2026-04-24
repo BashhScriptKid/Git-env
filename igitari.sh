@@ -601,6 +601,13 @@ setup_custom_tab_completion() {
             # fzf return-type argument
             mapfile -t completions < <(compgen -W "sha message diffs name ref diff content type" -- "$current_word")
 
+        elif [[ "$line" =~ ^[a-z][a-z0-9_-]*[[:space:]] ]]; then
+            # Unrecognized command's arguments: default to file completion.
+            # Covers clone, init, commit, reset, grep, blame, and any other
+            # git command without a specific handler above. compgen -f handles
+            # absolute paths (/foo), relative dirs (foo/), and partial names.
+            mapfile -t completions < <(compgen -f -- "$current_word")
+
         else
             # Top-level: complete command names
             mapfile -t completions < <(compgen -W "${git_commands} ${igitari_commands}" -- "${current_word}")
