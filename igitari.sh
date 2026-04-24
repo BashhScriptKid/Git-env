@@ -454,7 +454,7 @@ setup_custom_tab_completion() {
         local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
 
         # Igitari-specific commands exposed to the user
-        local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead version"
+        local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead version paginate no-pager"
 
         # Git options usable at the top level
 
@@ -1536,12 +1536,23 @@ execute_command() {
   reword      Change a commit message
   movehead    Move HEAD forward/backward relative to current position
   lazygit     Launch LazyGit TUI (requires installation)
+  version     Display Igitari version
+  paginate    Pass output through a pager
+  no-pager    Disable pager for output
   >command    Execute shell command (prefix with >)
 EOF
         ;;
 
     "version"|"-v")
         show_version
+        ;;
+
+    "paginate")
+        eval "${git_path}" --paginate "${cmd#paginate }"
+        ;;
+
+    "no-pager")
+        eval "${git_path}" --no-pager "${cmd#no-pager }"
         ;;
 
     \>*)
