@@ -553,6 +553,10 @@ setup_custom_tab_completion() {
             # submodule subcommands
             mapfile -t completions < <(compgen -W "add status init deinit update summary foreach sync absorbgitdirs set-url set-branch" -- "$current_word")
 
+        elif [[ "$line" =~ ^reflog[[:space:]] ]]; then
+            # reflog subcommands
+            mapfile -t completions < <(compgen -W "expire delete show exists" -- "$current_word")
+
         elif [[ "$line" =~ ^notes[[:space:]] ]]; then
             # notes subcommands
             mapfile -t completions < <(compgen -W "add copy list show edit append prune remove" -- "$current_word")
