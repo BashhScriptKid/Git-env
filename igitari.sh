@@ -388,7 +388,7 @@ setup_custom_tab_completion() {
 
     # Helper: return sorted, deduplicated local branch names
     _get_branches() {
-        git branch 2>/dev/null | sed 's/^[[:space:]]*//' | sed 's/.*\///' | sort -u
+        git branch 2>/dev/null | sed 's/^[* ]*//' | sort -u
     }
 
     # Helper: return remote names as space-separated string
