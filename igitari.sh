@@ -456,6 +456,9 @@ setup_custom_tab_completion() {
         # Igitari-specific commands exposed to the user
         local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead"
 
+        # Git options usable at the top level (passed through to git as-is)
+        local git_options="--version --paginate --no-pager --help"
+
         # ----------------------------------------------------------------------
         # Context dispatch — order matters: most specific first
         # ----------------------------------------------------------------------
@@ -610,7 +613,7 @@ setup_custom_tab_completion() {
 
         else
             # Top-level: complete command names
-            mapfile -t completions < <(compgen -W "${git_commands} ${igitari_commands}" -- "${current_word}")
+            mapfile -t completions < <(compgen -W "${git_commands} ${igitari_commands} ${git_options}" -- "${current_word}")
         fi
 
         # ----------------------------------------------------------------------
