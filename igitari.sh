@@ -383,6 +383,8 @@ setup_custom_tab_completion() {
         remotes=$(git remote 2>/dev/null | tr '\n' '|')
         remotes=${remotes%|}
 
+        [[ -z "$remotes" ]] && return 1
+
         [[ -n "$remotes" && "$line" =~ [[:space:]](${remotes})[[:space:]] ]]
     }
 
