@@ -452,7 +452,7 @@ setup_custom_tab_completion() {
         local git_commands="config help bugreport init clone add status diff commit notes restore reset rm mv branch checkout switch merge mergetool log stash tag worktree fetch pull push remote submodule show difftool range-diff shortlog describe apply cherry-pick rebase revert bisect blame grep am imap-send format-patch send-email request-pull svn fast-import clean gc fsck reflog filter-branch instaweb archive bundle daemon update-server-info cat-file check-ignore checkout-index commit-tree count-objects diff-index for-each-ref hash-object ls-files ls-tree merge-base read-tree rev-list rev-parse show-ref symbolic-ref update-index update-ref verify-pack write-tree"
 
         # Igitari-specific commands exposed to the user
-        local igitari_commands="help exit lazygit openweb squash discard reword fzf"
+        local igitari_commands="help exit lazygit openweb squash discard reword fzf movehead"
 
         # ----------------------------------------------------------------------
         # Context dispatch — order matters: most specific first
@@ -944,6 +944,65 @@ EOF_msg
     fi
 }
 
+#--|MOVEHEAD                                                          [IGITARI]
+#------------------------------------------------------------------------------
+# Relative HEAD movement — move forward/backward in commit history
+#------------------------------------------------------------------------------
+
+# Relative HEAD movement command (forward/backward) without explicit checkout
+movehead() {
+    local direction="$1"
+    local steps=${2:-1}
+
+    if [[ -z "$direction" ]]; then
+        echo "Usage: movehead (forward | backward) <steps>"
+        return 1
+    fi
+
+    if ! [[ "$steps" =~ ^[0-9]+$ ]]; then
+        echo "Error: '$steps' is not a valid number."
+        return 1
+    fi
+
+    if [[ "$direction" == "backward" ]]; then
+        git checkout "HEAD~${steps}"
+    elif [[ "$direction" == "forward" ]]; then
+        __move_head_forward "$steps"
+    else
+        echo "Error: Invalid direction '$direction'. Use 'forward' or 'backward'."
+        return 1
+    fi
+}
+
+# Move HEAD forward via reflog (undo a backward movement)
+__move_head_forward() {
+    local steps=$1
+
+    # If on a branch, we're already at the latest commit
+    if git symbolic-ref --short HEAD 2>/dev/null >/dev/null; then
+        echo "Already on a branch — nothing to move forward to."
+        return 1
+    fi
+
+    # Use reflog to step forward
+    if git checkout "HEAD@{$steps}" 2>/dev/null; then
+        echo "Moved forward $steps step(s)."
+
+        # Reattach HEAD if we landed on a branch tip
+        if ! git symbolic-ref --short HEAD 2>/dev/null >/dev/null; then
+            local branch_at_head
+            branch_at_head=$(git branch --points-at HEAD 2>/dev/null | sed -n 's/^[* ] //p' | head -1)
+            if [[ -n "$branch_at_head" ]]; then
+                echo "At tip of '$branch_at_head', reattaching HEAD."
+                git checkout "$branch_at_head"
+            fi
+        fi
+    else
+        echo "Cannot move forward. Try 'git reflog' to see recent commits."
+        return 1
+    fi
+}
+
 #--|GIT_FUNC                                                          [GITLIB]
 #------------------------------------------------------------------------------
 # Git Repository Functions
@@ -1406,7 +1465,7 @@ _reload() {
 
 # Execute individual command
 execute_command() {
-    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf")
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
@@ -1444,6 +1503,7 @@ execute_command() {
   squash      Squash the last n-th commits into one
   discard     Intelligently discard changes
   reword      Change a commit message
+  movehead    Move HEAD forward/backward relative to current position
   lazygit     Launch LazyGit TUI (requires installation)
   >command    Execute shell command (prefix with >)
 EOF
