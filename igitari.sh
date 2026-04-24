@@ -1541,6 +1541,14 @@ execute_command() {
 EOF
         ;;
 
+    "--version"|"-v")
+        show_version
+        ;;
+
+    "--help")
+        show_help
+        ;;
+
     \>*)
         # Shell command execution (prefixed with >)
         local shell_cmd="${cmd#>}"
