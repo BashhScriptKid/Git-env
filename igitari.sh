@@ -1552,7 +1552,7 @@ EOF
     \>*)
         # Shell command execution (prefixed with >)
         local shell_cmd="${cmd#>}"
-        shell_cmd="$(echo "${shell_cmd}" | xargs)" # Trim whitespace
+        read -r shell_cmd <<< "${shell_cmd}" # Trim whitespace
 
         [[ -n "${shell_cmd}" ]] || return 0
 
@@ -1583,7 +1583,7 @@ EOF
                 fi
 
                 # Call the function with args
-                # shellcheck disable=SC2086
+                # shellcheck disable=SC2068
                 $fn ${args[@]} # Don't quote $args - we want word splitting
                 exit_code=$?
                 ((exit_code == 0)) && history -s "${cmd}"
@@ -1608,8 +1608,8 @@ process_command_line() {
     local input="$1"
     local git_path="${2:-$GIT_PATH}"
 
-    # Trim whitespace
-    input="$(echo "$input" | xargs)"
+    # Trim whitespace using bash builtins (avoids xargs interpreting --version etc.)
+    read -r input <<< "$input"
     [[ -z "$input" ]] && return 0
 
     # Split on operators while preserving quoted strings
@@ -1647,7 +1647,7 @@ process_command_line() {
         *)
             # Command execution
             if [[ "${should_execute}" == true ]]; then
-                cmd="$(echo "${cmd}" | xargs)" # Trim whitespace
+                read -r cmd <<< "${cmd}" # Trim whitespace
                 execute_command "${cmd}" "${git_path}"
                 last_exit_code=$?
             else
