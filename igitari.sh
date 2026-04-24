@@ -549,6 +549,10 @@ setup_custom_tab_completion() {
             existing_tags=$(git tag -l 2>/dev/null | tr '\n' ' ')
             mapfile -t completions < <(compgen -W "${tag_flags} ${existing_tags}" -- "$current_word")
 
+        elif [[ "$line" =~ ^worktree[[:space:]] ]]; then
+            # worktree subcommands
+            mapfile -t completions < <(compgen -W "add list lock move prune remove unlock" -- "$current_word")
+
         elif [[ "$line" =~ ^config[[:space:]] ]]; then
             # config: subcommands + existing key names
             local config_subcmds="list get set unset rename-section remove-section edit"
