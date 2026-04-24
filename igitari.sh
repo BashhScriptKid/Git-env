@@ -62,7 +62,7 @@ readonly REMOTE_LINK="https://github.com/BashhScriptKid/Igitari"
 #------------------------------------------------------------------------------
 # Configuration flags
 DO_LOGGING=0
-NO_SOURCING=1
+NO_SOURCING=0
 INIT_CLEAR=0
 PRINT_HEADER=1
 NOT_GitDir=0
