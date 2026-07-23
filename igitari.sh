@@ -1865,7 +1865,7 @@ process_command_line() {
     mapfile -t commands < <(echo "$input" | sed 's/&&/\n\&\&\n/g; s/||/\n||\n/g; s/;/\n;\n/g' | sed '/^$/d')
 
     local last_exit_code=0
-    local should_execute=true
+    local should_execute=1
 
     while [[ ${#commands[@]} -gt 0 ]]; do
         local cmd="${commands[0]}"
