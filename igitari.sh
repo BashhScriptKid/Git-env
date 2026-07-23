@@ -1138,8 +1138,8 @@ transplant() {
 
     if ! git cherry-pick "${commits[@]}"; then
         echo "Error: Cherry-pick failed (conflicts?)."
-        echo "  Resolve conflicts, then run 'git cherry-pick --continue'"
-        echo "  Or abort with 'git cherry-pick --abort && git checkout $original_branch'"
+        echo "  Resolve conflicts, then run 'cherry-pick --continue && stash pop --index'"
+        echo "  Or abort with 'cherry-pick --abort && checkout $original_branch'"
         $stash_created && echo "  Stashed changes will be restored on '$original_branch' after resolution."
         return 1
     fi
@@ -1159,7 +1159,7 @@ transplant() {
     if $stash_created; then
         git stash pop --index || {
             echo "Warning: Failed to restore stashed changes."
-            echo "  Run 'git stash pop --index' manually when ready."
+            echo "  Run 'stash pop --index' manually when ready."
         }
     fi
 
@@ -1195,7 +1195,7 @@ movehead() {
         fi
 
         if ! git checkout "HEAD@{$steps}" 2>/dev/null; then
-            echo "Cannot move forward. Try 'git reflog' to see recent commits."
+            echo "Cannot move forward. Try 'reflog' to see recent commits."
             return 1
         fi
 
