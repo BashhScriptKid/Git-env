@@ -998,28 +998,16 @@ movehead() {
     if [[ "$direction" == "backward" ]]; then
         git checkout "HEAD~${steps}"
     elif [[ "$direction" == "forward" ]]; then
-        __move_head_forward "$steps"
-    else
-        echo "Error: Invalid direction '$direction'. Use 'forward' or 'backward'."
-        return 1
-    fi
-}
+        if git symbolic-ref --short HEAD 2>/dev/null >/dev/null; then
+            echo "Already on a branch — nothing to move forward to."
+            return 1
+        fi
 
-# Move HEAD forward via reflog (undo a backward movement)
-__move_head_forward() {
-    local steps=$1
+        if ! git checkout "HEAD@{$steps}" 2>/dev/null; then
+            echo "Cannot move forward. Try 'git reflog' to see recent commits."
+            return 1
+        fi
 
-    # If on a branch, we're already at the latest commit
-    if git symbolic-ref --short HEAD 2>/dev/null >/dev/null; then
-        echo "Already on a branch — nothing to move forward to."
-        return 1
-    fi
-
-    # Use reflog to step forward
-    if git checkout "HEAD@{$steps}" 2>/dev/null; then
-        echo "Moved forward $steps step(s)."
-
-        # Reattach HEAD if we landed on a branch tip
         if ! git symbolic-ref --short HEAD 2>/dev/null >/dev/null; then
             local branch_at_head
             branch_at_head=$(git branch --points-at HEAD 2>/dev/null | sed -n 's/^[* ] //p' | head -1)
@@ -1029,7 +1017,7 @@ __move_head_forward() {
             fi
         fi
     else
-        echo "Cannot move forward. Try 'git reflog' to see recent commits."
+        echo "Error: Invalid direction '$direction'. Use 'forward' or 'backward'."
         return 1
     fi
 }
