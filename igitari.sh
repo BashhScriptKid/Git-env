@@ -1610,10 +1610,7 @@ process_command_line() {
     local IFS=$'\n'
     local commands
 
-    mapfile -t commands < <(echo "$input" | awk '{
-        gsub(/&&|\|\||;;|;/, "\n&\n")
-        print
-    }' | sed '/^$/d')
+    mapfile -t commands < <(echo "$input" | sed 's/&&/\n\&\&\n/g; s/||/\n||\n/g; s/;/\n;\n/g' | sed '/^$/d')
 
     local last_exit_code=0
     local should_execute=true
@@ -1623,24 +1620,11 @@ process_command_line() {
         commands=("${commands[@]:1}") # drop first element
 
         case "$cmd" in
-        "&&")
-            # AND operator: execute next only if last succeeded
-            should_execute=$([[ $last_exit_code -eq 0 ]] && echo true || echo false)
-            log "AND operator: should_execute=${should_execute}"
-            ;;
-        "||")
-            # OR operator: execute next only if last failed
-            should_execute=$([[ $last_exit_code -ne 0 ]] && echo true || echo false)
-            log "OR operator: should_execute=${should_execute}"
-            ;;
-        ";")
-            # Sequential operator: always execute next
-            should_execute=true
-            log "Sequential operator: should_execute=${should_execute}"
-            ;;
+        "&&")  should_execute=$(( last_exit_code == 0 && should_execute )) ;;
+        "||")  should_execute=$(( last_exit_code != 0 && should_execute )) ;;
+        ";")   should_execute=1 ;;
         *)
-            # Command execution
-            if [[ "${should_execute}" == true ]]; then
+            if [[ "$should_execute" -eq 1 ]]; then
                 read -r cmd <<< "${cmd}" # Trim whitespace
                 execute_command "${cmd}" "${git_path}"
                 last_exit_code=$?
