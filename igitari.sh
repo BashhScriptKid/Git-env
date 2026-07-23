@@ -1042,6 +1042,130 @@ redo() {
     git reset --hard "HEAD@{${target}}"
 }
 
+# Transplant commits from current branch to another branch
+# Usage: transplant <commit | n> <to_branch>
+#   commit — specific commit hash to transplant
+#   n      — number of commits from HEAD to transplant (e.g. "3" = last 3 commits)
+transplant() {
+    if (($# < 2)); then
+        echo "Usage: transplant <commit | n> <to_branch>"
+        echo "  transplant abc1234 feature  — move commit abc1234 to 'feature'"
+        echo "  transplant 3 feature        — move last 3 commits to 'feature'"
+        return 1
+    fi
+
+    local source="$1"
+    local target_branch="$2"
+    local original_branch
+
+    original_branch=$(git symbolic-ref --short HEAD 2>/dev/null) || {
+        echo "Error: You're not even in a branch (detached HEAD), what are you even trying to transplant?"
+        return 1
+    }
+
+    if [[ "$original_branch" == "$target_branch" ]]; then
+        echo "Error: You're pointing at the same branch, make sure you check the capitalisation!"
+        return 1
+    fi
+
+    if ! git rev-parse --verify "$target_branch" &>/dev/null; then
+        echo "Error: Branch '$target_branch' doesn't exist."
+        return 1
+    fi
+
+    # Resolve commit(s) to transplant
+    local -a commits
+    if [[ "$source" =~ ^[0-9]+$ ]]; then
+        # Numeric — last N commits
+        if ((source < 1)); then
+            echo "Error: You're asking me to transplant none/negative commits? Huh?? >.>"
+            return 1
+        fi
+        local total
+        total=$(git rev-list --count HEAD)
+        if ((source > total)); then
+            echo "Error: Only $total commits exist (you asked for $source), you're asking too much!"
+            return 1
+        fi
+        mapfile -t commits < <(git rev-list --reverse "HEAD~${source}..HEAD")
+    else
+        # Commit hash
+        if ! git cat-file -e "$source^{commit}" 2>/dev/null; then
+            echo "Error: I can't find commit '$source'!"
+            return 1
+        fi
+        commits=("$source")
+    fi
+
+    local commit_count=${#commits[@]}
+
+    echo "Transplanting $commit_count commit(s) from '$original_branch' to '$target_branch':"
+    for c in "${commits[@]}"; do
+        git log --oneline -1 "$c"
+    done
+    echo
+
+    confirm=''
+    while [[ $confirm != "y" && $confirm != "n" ]]; do
+        read -s -n1 -p "Proceed? (y/n) " confirm </dev/tty || {
+            echo "Aborted by user"
+            return 1
+        }
+    done
+    echo
+    [[ $confirm == "n" ]] && { echo "Transplant aborted."; return 1; }
+
+    # Stash uncommitted changes if any
+    local stash_created=false
+    if ! git diff-index --quiet HEAD --; then
+        echo "Uncommitted changes detected. Stashing."
+        if git stash --include-untracked; then
+            echo "Done."
+            stash_created=true
+        else
+            echo "Error: Failed to stash changes. Aborting."
+            return 1
+        fi
+    fi
+
+    echo "Checking out to $target_branch to start"
+    # Cherry-pick onto target branch
+    git checkout "$target_branch" || {
+        echo "Error: Failed to checkout '$target_branch'."
+        $stash_created && git stash pop --index
+        return 1
+    }
+
+    if ! git cherry-pick "${commits[@]}"; then
+        echo "Error: Cherry-pick failed (conflicts?)."
+        echo "  Resolve conflicts, then run 'git cherry-pick --continue'"
+        echo "  Or abort with 'git cherry-pick --abort && git checkout $original_branch'"
+        $stash_created && echo "  Stashed changes will be restored on '$original_branch' after resolution."
+        return 1
+    fi
+
+    # Return to original branch and reset
+    git checkout "$original_branch" || {
+        echo "Error: Failed to return to '$original_branch'."
+        return 1
+    }
+
+    git reset --hard "${commits[0]}^" || {
+        echo "Error: Failed to reset '$original_branch'."
+        return 1
+    }
+
+    # Restore stash if created
+    if $stash_created; then
+        git stash pop --index || {
+            echo "Warning: Failed to restore stashed changes."
+            echo "  Run 'git stash pop --index' manually when ready."
+        }
+    fi
+
+    echo "Done! $commit_count commit(s) transplanted to '$target_branch'."
+}
+
 #--|MOVEHEAD                                                          [IGITARI]
 #------------------------------------------------------------------------------
 # Relative HEAD movement — move forward/backward in commit history
@@ -1554,7 +1678,7 @@ _reload() {
 
 # Execute individual command
 execute_command() {
-    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead" "undo" "redo")
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead" "undo" "redo" "transplant")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
@@ -1595,6 +1719,7 @@ execute_command() {
   movehead    Move HEAD forward/backward relative to current position
   undo        Undo last Git operation (reflog-based)
   redo        Redo last undone Git operation
+  transplant  Move commits from current branch to another branch
   lazygit     Launch LazyGit TUI (requires installation)
   version     Display Igitari version
   paginate    Pass output through a pager
