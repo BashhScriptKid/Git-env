@@ -1166,6 +1166,59 @@ transplant() {
     echo "Done! $commit_count commit(s) transplanted to '$target_branch'."
 }
 
+# Remove a file from entire git history as if it never existed
+# Usage: decimate <file>
+decimate() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: decimate <file>"
+        return 1
+    fi
+
+    local target_file="$1"
+
+    # Check if file exists in any commit
+    if ! git log --all --diff-filter=A -- "$target_file" | grep -q .; then
+        echo "Error: '$target_file' doesn't even exist to git (yet)! (Untracked)"
+        return 1
+    fi
+
+    local commit_count
+    commit_count=$(git log --all --oneline -- "$target_file" | wc -l)
+
+    echo "This will remove '$target_file' from ALL $commit_count commit(s) in history, as if it never existed."
+    echo "WARNING: This rewrites history! Do not use on pushed branches (without concrete reason, that is)."
+    echo
+
+    confirm=''
+    while [[ $confirm != "y" && $confirm != "n" ]]; do
+        read -s -n1 -p "Proceed? (y/n) " confirm </dev/tty || {
+            echo "Aborted by user"
+            return 1
+        }
+    done
+    echo
+    [[ $confirm == "n" ]] && { echo "Decimate aborted."; return 1; }
+
+    echo "Snapping '$target_file' out of existence..."
+
+    if command -v git-filter-repo &>/dev/null; then
+        echo "Using modern filter-repo method."
+        git filter-repo --invert-paths --path "$target_file" --force
+    else
+        echo "Using filter-branch method."
+        git filter-branch --force --index-filter \
+            "git rm --cached --ignore-unmatch '$target_file'" \
+            --prune-empty -- --all
+    fi
+    echo "Filtering done, cleaning up the remains:"
+
+    # Clean up
+    git reflog expire --expire=now --all
+    git gc --prune=now --aggressive
+
+    echo "Done! '$target_file' has been snapped out of existence."
+}
+
 #--|MOVEHEAD                                                          [IGITARI]
 #------------------------------------------------------------------------------
 # Relative HEAD movement — move forward/backward in commit history
@@ -1678,7 +1731,7 @@ _reload() {
 
 # Execute individual command
 execute_command() {
-    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead" "undo" "redo" "transplant")
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead" "undo" "redo" "transplant" "decimate")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
@@ -1720,6 +1773,7 @@ execute_command() {
   undo        Undo last Git operation (reflog-based)
   redo        Redo last undone Git operation
   transplant  Move commits from current branch to another branch
+  decimate    Remove a file from entire git history ( Thanos snap)
   lazygit     Launch LazyGit TUI (requires installation)
   version     Display Igitari version
   paginate    Pass output through a pager
