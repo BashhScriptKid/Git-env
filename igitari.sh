@@ -2039,7 +2039,7 @@ start_git_watcher() {
 
         while kill -0 "$$" 2>/dev/null; do
             inotifywait -q -r -e modify,create,delete,move \
-                "$watch_dir/refs" "$watch_dir/HEAD" "$watch_dir/index" 2>/dev/null &
+                "$watch_dir/refs" "$watch_dir/HEAD" "$watch_dir/index" >/dev/null 2>&1 &
             child=$!
             wait "$child" 2>/dev/null
             local exit_code=$?
