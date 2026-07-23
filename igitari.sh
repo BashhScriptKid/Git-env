@@ -83,6 +83,7 @@ REPO_IS_DIRTY_AND_STAGED=0
 REPO_STASH_DIRTY=0
 GIT_REFLOG=""
 GIT_REFLOG_COUNT=0
+GIT_WATCHER_PID=""
 SELF_REALPATH=$(realpath "$0")
 
 #--|SANITY_CHECKS                                                    [IGITARI]
@@ -1623,6 +1624,7 @@ EOF
 
         log "Executing shell command: ${shell_cmd}"
         eval "${shell_cmd}"
+        notify_git_watcher
         ;;
 
     *)
@@ -1808,6 +1810,7 @@ handle_interrupt() {
 
 # Handle termination signals
 handle_termination() {
+    [[ -n "$GIT_WATCHER_PID" ]] && kill "$GIT_WATCHER_PID" 2>/dev/null
     [[ -n "$UPDATER_PID" ]] && kill "$UPDATER_PID" 2>/dev/null
     history -w && log "Successfully saved command history."
     echo
@@ -1817,12 +1820,68 @@ handle_termination() {
 
 # Cleanup on normal exit
 cleanup_and_exit() {
+    [[ -n "$GIT_WATCHER_PID" ]] && kill "$GIT_WATCHER_PID" 2>/dev/null
     [[ -n "$UPDATER_PID" ]] && kill "$UPDATER_PID" 2>/dev/null
     set +o history
     history -w && log "Successfully saved command history."
     echo
     echo "Byee!"
     exit 0
+}
+
+# Handle external git changes (SIGUSR1 from inotifywait watcher)
+handle_external_change() {
+    log "External change detected, refreshing state"
+    check_git_repository >/dev/null
+    dirty_check
+}
+
+# Start background inotifywait watcher on .git directory
+# Watches refs, HEAD, and index for changes; sends SIGUSR1 on update
+# Also handles SIGUSR1 from parent to re-evaluate git dir on repo switch
+start_git_watcher() {
+    command -v inotifywait &>/dev/null || return 0
+    [[ -n "$GIT_WATCHER_PID" ]] && kill "$GIT_WATCHER_PID" 2>/dev/null
+
+    (
+        local git_dir
+        git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 1
+        local watch_dir="$git_dir"
+        log "Watcher: started on $watch_dir"
+
+        trap '
+            git_dir=$(git rev-parse --git-dir 2>/dev/null) || exit 1
+            if [[ "$git_dir" != "$watch_dir" ]]; then
+                log "Watcher: git dir changed $watch_dir -> $git_dir"
+                watch_dir="$git_dir"
+                kill "$child" 2>/dev/null
+            fi
+        ' USR1
+
+        while kill -0 "$$" 2>/dev/null; do
+            inotifywait -q -r -e modify,create,delete,move \
+                "$watch_dir/refs" "$watch_dir/HEAD" "$watch_dir/index" 2>/dev/null &
+            child=$!
+            wait "$child" 2>/dev/null
+            local exit_code=$?
+            # inotifywait returns non-zero when killed (dir change) — don't exit
+            ((exit_code > 128)) && continue
+            # Normal event — notify parent
+            log "Watcher: change detected in $watch_dir"
+            kill -USR1 "$$" 2>/dev/null || exit 0
+        done
+        log "Watcher: exited"
+    ) &
+    GIT_WATCHER_PID=$!
+    disown "$GIT_WATCHER_PID"
+}
+
+# Notify watcher to re-evaluate git directory (e.g. after >cd)
+notify_git_watcher() {
+    if [[ -n "$GIT_WATCHER_PID" ]]; then
+        log "Watcher: notifying to re-evaluate git dir"
+        kill -USR1 "$GIT_WATCHER_PID" 2>/dev/null
+    fi
 }
 
 #--|INTERFACES                                                       [IGITARI]
@@ -2206,6 +2265,10 @@ main_loop() {
 
     # Trap SIGRTMIN from background update checker
     trap '_updater_signal_handler' SIGRTMIN
+    trap 'handle_external_change' USR1
+
+    # Start filesystem watcher for external git changes
+    start_git_watcher
 
     while true; do
         # Update repository status
@@ -2231,6 +2294,8 @@ main_loop() {
             fi
         fi
     done
+
+    [[ -n "$GIT_WATCHER_PID" ]] && kill "$GIT_WATCHER_PID" 2>/dev/null
 }
 #------------------------------------------------------------------------------
 # Program Entry Point
