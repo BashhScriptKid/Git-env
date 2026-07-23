@@ -2206,8 +2206,15 @@ do_update() {
 
     # Run in background — don't block the prompt
     (
+        # Exit immediately if parent is gone (handles SIGKILL orphan case)
+        kill -0 "$$" 2>/dev/null || exit 0
+
         _UPDATER_BACKGROUND=1
         Updater
+
+        # Exit if parent is gone before signaling
+        kill -0 "$$" 2>/dev/null || exit 0
+
         # If we got here with a notification to show, signal the main shell
         if [[ -f "$UPDATE_PENDING_FILE" ]]; then
             log "updater: signaling main shell"
