@@ -1844,208 +1844,275 @@ handle_empty_command() {
 
 #--|GIST_UPDATER                                                     [IGITARI]
 #------------------------------------------------------------------------------
-# Updater (GitHub Gist)
+# Updater (GitHub)
 #------------------------------------------------------------------------------
 
 Updater() {
-    if [[ ${CHECK_UPDATES} -ne 1 ]]; then
-        log "Updater skipped (CHECK_UPDATES != 1)"
-        return
+    [[ ${CHECK_UPDATES} -ne 1 ]] && return
+
+    local SCRIPT_URL="${_UPDATER_RAW_URL}/igitari.sh"
+    local REF_FILE="${LOCALPATH}ref.sha"
+    local latest_sha local_sha
+
+    _updater_check_prereqs "${_UPDATER_RAW_URL}/igitari.sh" || return $?
+    latest_sha="$(_updater_fetch_hash)" || return 1
+
+    # No local ref stored — first run, save baseline
+    if [[ ! -s "$REF_FILE" ]]; then
+        log "No ref.sha found, storing baseline."
+        mkdir -p "$LOCALPATH"
+        echo "$latest_sha" >"$REF_FILE"
+        return 0
     fi
 
-    local UPDATER_URL='https://raw.githubusercontent.com/BashhScriptKid/Igitari/refs/heads/master/'
-    local SCRIPT_URL="${UPDATER_URL}git-shellenv.sh"
+    local_sha="$(cat "$REF_FILE")"
+    if [[ "$latest_sha" == "$local_sha" ]]; then
+        log "Updater: already up to date."
+        return 0
+    fi
 
-    local latest_remote_sha
-    local local_sha
-    local status
+    _updater_resolve_status "$local_sha" "$latest_sha" "$SCRIPT_URL"
+}
 
-    connection_checker() {
-        log "Checking prerequisites..."
+#--| Updater helpers                                                 [IGITARI]
+#------------------------------------------------------------------------------
 
-        if ! command -v curl >/dev/null 2>&1; then
-            echo "Updater: curl not installed."
-            log "curl not installed, updater cannot continue"
-            return 1
-        fi
+_UPDATER_RAW_URL='https://raw.githubusercontent.com/BashhScriptKid/Igitari/mono-master'
 
-        log "Testing connectivity to $UPDATER_URL"
-        if ! curl -fsSL --max-time 5 --head "$UPDATER_URL" >/dev/null; then
-            echo "Updater: remote unreachable."
-            log "remote unreachable (timeout or no response)"
-            return 254
-        fi
-        log "Connection OK"
-    }
+_updater_check_prereqs() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Error: curl isn't installed. How am I supposed to check for updates without it? :/"
+        return 1
+    fi
 
-    compare_commithash() {
-        log "Fetching commit differences from $UPDATER_URL"
-
-        if [[ ! -f "${LOCALPATH}/ref.sha" ]]; then
-            echo "Well I hit a trouble: The updater system is broken now! Surely you broke it, didn't you? Time to curl again from the repo."
-            echo "In case it is not your fault and wondering what happened: ref.sha is missing from ${LOCALPATH}, required for version comparison."
-            exit 1
-        fi
-
-        latest_remote_sha="$(git ls-remote ${REMOTE_LINK}.git HEAD | awk '{print $1}')"
-
-        local_sha="$(cat "${LOCALPATH}ref.sha")"
-
-        # Actually compare
-        if [[ "$latest_remote_sha" == "$local_sha" ]]; then
-            log "local and remote versions are the same"
-            return 0
-        else
-            echo "Local: $local_sha"
-            echo "Remote: $latest_remote_sha"
-            log "local and remote versions differ (${latest_remote_sha} != ${local_sha})"
-            return 1
-        fi
-    }
-
-    # shellcheck disable=SC2120
-    replacer() {
-        local TEMP_FILE
-
-        broken_version_check() {
-            if bash -n "$TEMP_FILE"; then
-                echo -ne "\e[1m\e[93m"
-                echo "This version is broken. Either you're using outdated Bash version or she made a mistake on writing. Try again later?"
-                echo -ne "\e[0m"
-
-                rm -f "$TEMP_FILE"
-                return 1
-            fi
-        }
-
-        TEMP_FILE=$(mktemp /tmp/update_gitsh-XXXX.sh) || {
-            echo "Updater: failed to create temporary file! Proceeding further is not ideal."
-            log "mktemp failed, cannot continue update"
-            return 1
-        }
-
-        SCRIPT_PATH="$(realpath "$0")"
-        log "Script path resolved to $SCRIPT_PATH"
-        log "Temp file created: $TEMP_FILE"
-
-        echo "Updater: downloading latest script from:"
-        echo "  $SCRIPT_URL"
-        echo
-
-        # Show progress, fail if error
-        if curl -fL "$SCRIPT_URL" -o "$TEMP_FILE"; then
-            log "Download complete ($TEMP_FILE)"
-
-            broken_version_check || return 1
-            log "Functionality/syntax test returned 0"
-
-            (chmod +x "$TEMP_FILE" && bash -n "$TEMP_FILE") || (echo "Script check failed (see above)." && return 1)
-
-            if [[ ! -s "$TEMP_FILE" ]]; then
-                echo "Updater: Huh, the update file is empty. Weird. I'm gonna…abort it real quick."
-                log "Downloaded file empty, aborting update"
-                rm -f "$TEMP_FILE"
-                return 1
-            fi
-
-            log "Overwriting script with new version"
-            cat "$TEMP_FILE" >"$SCRIPT_PATH" && rm -f "$TEMP_FILE"
-
-            echo
-            echo "Updater: update complete! Restarting..."
-            log "Exec restart: $SCRIPT_PATH $*"
-            exec "$SCRIPT_PATH" "${ARG[@]}"
-        else
-            echo "Updater: failed to download new version."
-            log "curl download failed"
-            rm -f "$TEMP_FILE"
-            return 1
-        fi
-    }
-
-    commit_fetcher() {
-        remote_json="$(curl -s "https://api.github.com/repos/BashhScriptKid/Igitari/compare/$local_sha...$latest_remote_sha")"
-
-        echo "$remote_json" |
-            awk '
-            /"message":/ {
-                sub(/.*"message": "/, "");
-                sub(/",?$/, "");
-                msg=$0;
-            }
-            /"name":/ {
-                sub(/.*"name": "/, "");
-                sub(/",?$/, "");
-                print "* " msg " — " $0;
-            }
-        '
-    }
-
-    main_updater() {
-        local response
-
-        echo
-        echo "New update is available!"
-        echo
-        echo "${RUNTIME_VERSION} -> ${latest_remote_sha}"
-        echo
-        echo "Changelogs:"
-        commit_fetcher | sed 's/^/  /' # Indent changelogs
-        echo
-
-        log "Prompting user for update (current=$RUNTIME_VERSION, new=$latest_remote_sha)"
-        read -rp "Would you like to update now? (Y/N) " -n1 response
-        echo
-        if [[ ${response} =~ ^[Yy]$ ]]; then
-            log "User accepted update"
-            replacer
-        else
-            log "User declined update"
-        fi
-    }
-
-    main_checker() {
-        log "Running update check..."
-        connection_checker && compare_commithash
-
-        # Pipe compare_commithash return code
-        local status=$?
-        if ((status == 1)); then
-            log "Update available"
-            return 255
-        elif ((status == 0)); then
-            log "No update available"
-        else
-            log "Function returned unexpected status code."
-        fi
-    }
-
-    # Run synchronously for now so we can trust exit code
-    status=0
-    main_checker || status=$?
-
-    if ((status != 255)); then
-        main_updater
+    if ! curl -fsSL --max-time 5 --head "$1" >/dev/null 2>&1; then
+        echo "Warning: Can't reach GitHub. Skipping update check."
+        return 254
     fi
 }
 
-do_update() {
-    SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-    GIT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+_updater_fetch_hash() {
+    local sha
+    sha="$(git ls-remote "${REMOTE_LINK}".git refs/heads/mono-master | awk '{print $1}')"
+    if [[ -z "$sha" ]]; then
+        echo "Warning: Couldn't fetch the latest commit hash. ls-remote came up empty."
+        return 1
+    fi
+    echo "$sha"
+}
 
-    if [[ -n "$GIT_ROOT" && "$SCRIPT_DIR" == "$GIT_ROOT" ]]; then
-        # Running from the repo root; skip auto-update
-        log "Updater skipped: running from Igitari repo itself."
-    else
-        # Optionally also check remote URL
-        REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-        if [[ "$REMOTE_URL" =~ github\.com[:/]+BashhScriptKid/Igitari ]]; then
-            echo "NOTE: The current updater system is incomplete and are not developed actively due to small userbase."
-            echo "      You can update Igitari by running the installation snippet in the repository."
-            return 0
-            Updater &
+_updater_resolve_status() {
+    local local_sha="$1" latest_sha="$2" script_url="$3"
+    local remote_has_local
+
+    log "Updater: You're on ${local_sha:0:7}, latest is ${latest_sha:0:7}."
+
+    # Fast check: is the local hash a ref tip in the remote?
+    remote_has_local="$(git ls-remote "${REMOTE_LINK}".git | awk -v h="$local_sha" '$1 == h {found=1} END {print (found ? "yes" : "no")}')"
+
+    # Slow fallback: shallow clone to search full history
+    if [[ "$remote_has_local" == "no" ]]; then
+        log "Updater: Version isn't a branch tip — digging deeper..."
+        remote_has_local="$(_updater_hash_in_remote "$local_sha")"
+    fi
+
+    if [[ "$remote_has_local" == "no" ]]; then
+        _updater_handle_ahead "$script_url" "$latest_sha"
+        return $?
+    fi
+
+    _updater_handle_behind "$local_sha" "$latest_sha" "$script_url"
+}
+
+# Check if a commit hash exists in remote history via shallow clone
+# Returns "yes" or "no"
+_updater_hash_in_remote() {
+    local target_sha="$1"
+    local tmp_dir
+
+    tmp_dir="$(mktemp -d /tmp/igitari-clone-XXXX)" || {
+        log "mktemp failed — can't do the deep search."
+        echo "no"
+        return
+    }
+
+    # Shallow clone mono-master — just enough to walk history
+    if git clone --depth=2048 --single-branch --no-tags -b mono-master "${REMOTE_LINK}.git" "$tmp_dir" >/dev/null 2>&1; then
+        if git -C "$tmp_dir" cat-file -e "$target_sha^{commit}" 2>/dev/null; then
+            rm -rf "$tmp_dir"
+            echo "yes"
+            return
         fi
     fi
+
+    rm -rf "$tmp_dir"
+    echo "no"
+}
+
+_updater_handle_ahead() {
+    local script_url="$1" latest_sha="$2"
+
+    # igitari.sh tracked locally = dev build, skip
+    if git ls-files --error-unmatch igitari.sh >/dev/null 2>&1; then
+        log "Updater: dev build detected (igitari.sh is tracked). Skipping."
+        return 0
+    fi
+
+    # Background mode: notify only, don't overwrite
+    if [[ "${_UPDATER_BACKGROUND:-}" == "1" ]]; then
+        echo "$latest_sha" > "$UPDATE_NEW_SHA_FILE"
+        echo "Warning: Your version isn't in the remote history, and this isn't a dev repo." > "$UPDATE_PENDING_FILE"
+        return 0
+    fi
+
+    # Foreground: ask before overwriting
+    echo "Warning: Your version isn't in the remote history, and this isn't a dev repo."
+    echo "          Either something's been tampered with or things got weird."
+    read -rp "Overwrite with latest? (Y/N) " -n1 response
+    echo
+    [[ "${response}" =~ ^[Yy]$ ]] || { echo "Updater: Sure, I'll mind my own business."; return 0; }
+    _updater_replace "$latest_sha"
+}
+
+_updater_handle_behind() {
+    local local_sha="$1" latest_sha="$2" script_url="$3"
+
+    local changelog version_name target_sha formatted_changelog response
+
+    changelog="$(curl -s "https://api.github.com/repos/BashhScriptKid/Igitari/compare/${local_sha}...${latest_sha}" 2>/dev/null)"
+
+    # Find the "Version bump to" commit — that's the release target, not HEAD
+    target_sha="$(echo "$changelog" | awk -F'"' '
+        /"sha":/ && !target { gsub(/"/, "", $4); sha = $4 }
+        /"message":/ && /Version bump to/ { target = sha; sub(/.*Version bump to /, "", $4); version_name = $4; exit }
+        END { if (target) print target }
+    ')"
+
+    if [[ -z "$target_sha" ]]; then
+        log "No 'Version bump to' commit found. Can't determine a stable release."
+        return 1
+    fi
+
+    [[ -z "$version_name" ]] && version_name="${target_sha:0:7}"
+
+    # Build changelog from target SHA back to local (skip merge and version bump)
+    local target_changelog
+    target_changelog="$(curl -s "https://api.github.com/repos/BashhScriptKid/Igitari/compare/${local_sha}...${target_sha}" 2>/dev/null)"
+    formatted_changelog="$(echo "$target_changelog" | awk '
+        /"message":/ {
+            sub(/.*"message": "/, ""); sub(/",?$/, "");
+            if ($0 !~ /^Merge/ && $0 !~ /^Version bump/) print "* " $0
+        }
+    ')"
+
+    # Background mode: just write notification, don't prompt
+    if [[ "${_UPDATER_BACKGROUND:-}" == "1" ]]; then
+        echo "$target_sha" > "$UPDATE_NEW_SHA_FILE"
+        {
+            echo "Update available: ${IGITARI_VERSION} -> ${version_name}"
+            if [[ -n "$formatted_changelog" ]]; then
+                echo
+                echo "Changes:"
+                echo "$formatted_changelog" | sed 's/^/  /'
+            fi
+            echo
+            echo "Run 'igitari' to update, or check https://github.com/BashhScriptKid/Igitari"
+        } > "$UPDATE_PENDING_FILE"
+        return 0
+    fi
+
+    # Foreground mode: interactive prompt
+    echo
+    echo "New version available: ${IGITARI_VERSION} -> ${version_name}"
+    echo
+    if [[ -n "$formatted_changelog" ]]; then
+        echo "Changes since your version:"
+        echo "$formatted_changelog" | sed 's/^/  /'
+        echo
+    fi
+
+    read -rp "Update now? (Y/N) " -n1 response
+    echo
+    if [[ ! "${response}" =~ ^[Yy]$ ]]; then
+        echo "Updater: Sure, I'll mind my own business."
+        return 0
+    fi
+
+    _updater_replace "$target_sha"
+}
+
+_updater_replace() {
+    local target_sha="$1"
+    local script_path temp_file
+    script_path="$(realpath "$0")"
+
+    # raw.githubusercontent.com doesn't support commit-specific URLs,
+    # so we download from the branch and trust that mono-master is stable.
+    local script_url="${_UPDATER_RAW_URL}/igitari.sh"
+
+    temp_file="$(mktemp /tmp/igitari-update-XXXX.sh)" || {
+        echo "Error: mktemp failed — can't create temp file to write the update to."
+        return 1
+    }
+
+    echo "Updater: Downloading..."
+    if ! curl -fL "$script_url" -o "$temp_file"; then
+        echo "Error: Download failed. Either your connection is flaky or GitHub is having a moment."
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    if ! bash -n "$temp_file"; then
+        echo -e "\e[1m\e[93m"
+        echo "This version is broken. Either you're using an outdated Bash or she made a mistake writing it. Try again later?"
+        echo -e "\e[0m"
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    if [[ ! -s "$temp_file" ]]; then
+        echo "Updater: Huh, the update file is empty. Weird. I'm gonna…abort it real quick."
+        rm -f "$temp_file"
+        return 1
+    fi
+
+    if ! cat "$temp_file" >"$script_path"; then
+        echo "Error: Couldn't write to ${script_path}. Check permissions, maybe?"
+        rm -f "$temp_file"
+        return 1
+    fi
+    chmod +x "$script_path"
+    rm -f "$temp_file"
+
+    echo "$target_sha" >"${LOCALPATH}ref.sha"
+
+    echo "[Update applied! Restart Igitari to use the new version.]" > "$UPDATE_PENDING_FILE"
+}
+
+do_update() {
+    [[ ${CHECK_UPDATES} -ne 1 ]] && return
+
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
+
+    if [[ -n "$GIT_ROOT" && "$SCRIPT_DIR" == "$GIT_ROOT" ]]; then
+        log "Updater skipped: running from Igitari repo itself."
+        return
+    fi
+
+    # Run in background — don't block the prompt
+    (
+        _UPDATER_BACKGROUND=1
+        Updater
+        # If we got here with a notification to show, signal the main shell
+        if [[ -f "$UPDATE_PENDING_FILE" ]]; then
+            log "updater: signaling main shell"
+            kill -SIGRTMIN $$ 2>/dev/null
+        else
+            log "updater: no update found"
+        fi
+    ) &
+    disown
 }
 
 #--|MAIN                                                             [IGITARI]
@@ -2053,9 +2120,45 @@ do_update() {
 # Main Program Loop
 #------------------------------------------------------------------------------
 
+UPDATE_PENDING_FILE="${LOCALPATH}.update_pending"
+UPDATE_NEW_SHA_FILE="${LOCALPATH}.update_new_sha"
+
+# Handle SIGRTMIN from background update check
+_updater_signal_handler() {
+    [[ ! -f "$UPDATE_PENDING_FILE" ]] && return
+
+    local msg new_sha
+    msg="$(<"$UPDATE_PENDING_FILE")"
+    rm -f "$UPDATE_PENDING_FILE"
+
+    # READLINE_LINE is the current input buffer — empty means user hasn't typed
+    if [[ -z "${READLINE_LINE:-}" ]]; then
+        # User hasn't typed — take over the terminal for interactive update
+        echo -ne "\r\033[K"
+        echo "$msg"
+        echo
+        read -rp "Update now? (Y/N) " -n1 response
+        echo
+        if [[ "${response}" =~ ^[Yy]$ ]]; then
+            new_sha="$(<"$UPDATE_NEW_SHA_FILE")"
+            rm -f "$UPDATE_NEW_SHA_FILE"
+            _updater_replace "$new_sha"
+        else
+            rm -f "$UPDATE_NEW_SHA_FILE"
+        fi
+    else
+        # User has typed — notify without disrupting
+        echo
+        echo "$msg"
+    fi
+}
+
 # Main interactive loop
 main_loop() {
     local cmd exit_code
+
+    # Trap SIGRTMIN from background update checker
+    trap '_updater_signal_handler' SIGRTMIN
 
     while true; do
         # Update repository status
@@ -2135,6 +2238,7 @@ main() {
     # Display startup information
     print_header
 
+    # Run update check in background so it doesn't block the prompt
     do_update
 
     # Enter main interactive loop
