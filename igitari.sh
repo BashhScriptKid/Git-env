@@ -81,6 +81,8 @@ ARG=""
 REPO_IS_DIRTY=0
 REPO_IS_DIRTY_AND_STAGED=0
 REPO_STASH_DIRTY=0
+GIT_REFLOG=""
+GIT_REFLOG_COUNT=0
 SELF_REALPATH=$(realpath "$0")
 
 #--|SANITY_CHECKS                                                    [IGITARI]
@@ -1004,6 +1006,41 @@ EOF_msg
     fi
 }
 
+# Undo last Git operation(s) using reflog. Usage: undo [steps]
+undo() {
+    [[ -z "$GIT_REFLOG" ]] && { echo "Error: No reflog available. Are you in a git repository?"; return 1; }
+
+    local target="${1:-1}"
+    [[ $target =~ ^[0-9]+$ ]] || { echo "Usage: undo [steps]"; return 1; }
+
+    if ((target >= GIT_REFLOG_COUNT)); then
+        echo "Error: No more undo history."
+        return 1
+    fi
+
+    echo "Undoing $target step(s)..."
+    git log --oneline -1 "HEAD@{${target}}"
+    git reset --hard "HEAD@{${target}}"
+}
+
+# Redo last undone Git operation using reflog. Usage: redo
+redo() {
+    [[ -z "$GIT_REFLOG" ]] && { echo "Error: No reflog available. Are you in a git repository?"; return 1; }
+
+    local current
+    current=$(echo "$GIT_REFLOG" | head -1 | grep -oP '@\{\K[0-9]+')
+
+    if ((current == 0)); then
+        echo "Error: Nothing to redo."
+        return 1
+    fi
+
+    local target=$((current - 1))
+    echo "Redoing to HEAD@{${target}}..."
+    git log --oneline -1 "HEAD@{${target}}"
+    git reset --hard "HEAD@{${target}}"
+}
+
 #--|MOVEHEAD                                                          [IGITARI]
 #------------------------------------------------------------------------------
 # Relative HEAD movement — move forward/backward in commit history
@@ -1087,6 +1124,9 @@ dirty_check() {
     else
         REPO_STASH_DIRTY=0
     fi
+
+    GIT_REFLOG=$(git reflog 2>/dev/null)
+    GIT_REFLOG_COUNT=$(echo "$GIT_REFLOG" | sed '/^$/d' | wc -l)
 }
 
 # Display Git repository status
@@ -1513,7 +1553,7 @@ _reload() {
 
 # Execute individual command
 execute_command() {
-    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead")
+    local EXPOSED_FUNCS=("openweb" "squash" "discard" "reword" "fzf" "movehead" "undo" "redo")
     local cmd="$1"
     local git_path="${2:-$GIT_PATH}"
 
@@ -1552,6 +1592,8 @@ execute_command() {
   discard     Intelligently discard changes
   reword      Change a commit message
   movehead    Move HEAD forward/backward relative to current position
+  undo        Undo last Git operation (reflog-based)
+  redo        Redo last undone Git operation
   lazygit     Launch LazyGit TUI (requires installation)
   version     Display Igitari version
   paginate    Pass output through a pager
