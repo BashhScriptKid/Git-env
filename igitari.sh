@@ -1167,14 +1167,17 @@ transplant() {
 }
 
 # Remove a file from entire git history as if it never existed
-# Usage: decimate <file>
+# Usage: decimate <file> [--all]
 decimate() {
     if [[ -z "$1" ]]; then
-        echo "Usage: decimate <file>"
+        echo "Usage: decimate <file> [--all]"
+        echo "  --all    Rewrite all branches (default: current branch only)"
         return 1
     fi
 
     local target_file="$1"
+    local rewrite_all=0
+    [[ "${2:-}" == "--all" ]] && rewrite_all=1
 
     # Check if file exists in any commit
     if ! git log --all --diff-filter=A -- "$target_file" | grep -q .; then
@@ -1182,14 +1185,29 @@ decimate() {
         return 1
     fi
 
-    local commit_count
-    commit_count=$(git log --all --oneline -- "$target_file" | wc -l)
+    local current_branch target_ref scope_desc
+    current_branch=$(git branch --show-current 2>/dev/null)
+    target_ref="${current_branch:-HEAD}"
 
-    echo "This will remove '$target_file' from ALL $commit_count commit(s) in history, as if it never existed."
+    if [[ $rewrite_all -eq 1 ]]; then
+        scope_desc="ALL branches"
+        target_ref=""
+    else
+        scope_desc="current branch '${current_branch:-HEAD}'"
+    fi
+
+    local commit_count
+    if [[ $rewrite_all -eq 1 ]]; then
+        commit_count=$(git log --all --oneline -- "$target_file" | wc -l)
+    else
+        commit_count=$(git log --oneline -- "$target_file" | wc -l)
+    fi
+
+    echo "This will remove '$target_file' from $commit_count commit(s) in $scope_desc, as if it never existed."
     echo "WARNING: This rewrites history! Do not use on pushed branches (without concrete reason, that is)."
     echo
 
-    confirm=''
+    local confirm=''
     while [[ $confirm != "y" && $confirm != "n" ]]; do
         read -s -n1 -p "Proceed? (y/n) " confirm </dev/tty || {
             echo "Aborted by user"
@@ -1199,22 +1217,86 @@ decimate() {
     echo
     [[ $confirm == "n" ]] && { echo "Decimate aborted."; return 1; }
 
+    # Stash dirty changes so filter-branch/filter-repo can rewrite cleanly
+    local did_stash=0
+    if ! git diff --quiet 2>/dev/null || ! git diff --staged --quiet 2>/dev/null; then
+        echo "Stashing dirty changes first..."
+        git stash push -q -m "decimate: auto-stash before rewriting"
+        did_stash=1
+    fi
+
     echo "Snapping '$target_file' out of existence..."
 
+    local filter_exit=0
     if command -v git-filter-repo &>/dev/null; then
-        echo "Using modern filter-repo method."
-        git filter-repo --invert-paths --path "$target_file" --force
+        echo "Using filter-repo."
+        local -a repo_args=(--invert-paths --path "$target_file" --force)
+        [[ $rewrite_all -eq 0 ]] && repo_args+=(--refs "$target_ref")
+        git filter-repo "${repo_args[@]}" || filter_exit=$?
     else
-        echo "Using filter-branch method."
-        git filter-branch --force --index-filter \
-            "git rm --cached --ignore-unmatch '$target_file'" \
-            --prune-empty -- --all
+        echo "Using fast-export/fast-import (bash-native) with exact parent stitching."
+
+        # 1. Locate the exact commit where the file was first added
+        local add_commit base_commit
+        add_commit=$(git log --diff-filter=A --format="%H" -1 -- "$target_file" 2>/dev/null || true)
+
+        if [[ -n "$add_commit" ]]; then
+            # Parent of the ADD commit (suppress stderr if add_commit is root commit)
+            base_commit=$(git rev-parse "${add_commit}~1" 2>/dev/null || true)
+        fi
+
+        # 2. Build bounded export arguments
+        local -a export_args=()
+        if [[ $rewrite_all -eq 1 ]]; then
+            if [[ -n "$base_commit" ]]; then
+                export_args=(--all "^${base_commit}")
+            else
+                export_args=(--all)
+            fi
+        else
+            if [[ -n "$base_commit" ]]; then
+                export_args=("${base_commit}..${target_ref}")
+            else
+                export_args=("${target_ref}")
+            fi
+        fi
+
+        # 3. Export with --reference-excluded-parents to preserve parent pointers
+        git fast-export --no-progress --reference-excluded-parents "${export_args[@]}" | \
+            awk -v file="$target_file" '
+                # Drop M and D lines strictly matching " " + file at end of line
+                ($1 == "M" || $1 == "D") && substr($0, length($0) - length(file)) == " " file {
+                    next
+                }
+                { print }
+            ' | git fast-import --force
+
+        # Check exit codes of all pipeline stages
+        local pipe_status=("${PIPESTATUS[@]}")
+        if [[ ${pipe_status[0]} -ne 0 || ${pipe_status[1]} -ne 0 || ${pipe_status[2]} -ne 0 ]]; then
+            filter_exit=1
+        fi
+
+        # 4. Sync working tree
+        if [[ $filter_exit -eq 0 ]]; then
+            git reset --hard HEAD
+        fi
     fi
+
+    if [[ $filter_exit -ne 0 ]]; then
+        echo -e "\e[91mError: Filtering failed (exit code $filter_exit). History was NOT rewritten.\e[0m"
+        [[ $did_stash -eq 1 ]] && git stash pop -q 2>/dev/null
+        return 1
+    fi
+
     echo "Filtering done, cleaning up the remains:"
 
     # Clean up
     git reflog expire --expire=now --all
     git gc --prune=now --aggressive
+
+    # Restore stashed changes
+    [[ $did_stash -eq 1 ]] && git stash pop -q 2>/dev/null
 
     echo "Done! '$target_file' has been snapped out of existence."
 }
@@ -1773,7 +1855,7 @@ execute_command() {
   undo        Undo last Git operation (reflog-based)
   redo        Redo last undone Git operation
   transplant  Move commits from current branch to another branch
-  decimate    Remove a file from entire git history ( Thanos snap)
+  decimate    Remove a file from entire git history (current branch only, --all for all)
   lazygit     Launch LazyGit TUI (requires installation)
   version     Display Igitari version
   paginate    Pass output through a pager
