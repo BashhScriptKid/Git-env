@@ -1765,6 +1765,7 @@ handle_interrupt() {
 
 # Handle termination signals
 handle_termination() {
+    [[ -n "$UPDATER_PID" ]] && kill "$UPDATER_PID" 2>/dev/null
     history -w && log "Successfully saved command history."
     echo
     echo "Igitari terminated."
@@ -1773,6 +1774,7 @@ handle_termination() {
 
 # Cleanup on normal exit
 cleanup_and_exit() {
+    [[ -n "$UPDATER_PID" ]] && kill "$UPDATER_PID" 2>/dev/null
     set +o history
     history -w && log "Successfully saved command history."
     echo
@@ -2112,7 +2114,8 @@ do_update() {
             log "updater: no update found"
         fi
     ) &
-    disown
+    UPDATER_PID=$!
+    disown "$UPDATER_PID"
 }
 
 #--|MAIN                                                             [IGITARI]
@@ -2122,6 +2125,7 @@ do_update() {
 
 UPDATE_PENDING_FILE="${LOCALPATH}.update_pending"
 UPDATE_NEW_SHA_FILE="${LOCALPATH}.update_new_sha"
+UPDATER_PID=""
 
 # Handle SIGRTMIN from background update check
 _updater_signal_handler() {
