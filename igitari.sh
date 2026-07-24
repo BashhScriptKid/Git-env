@@ -1768,6 +1768,68 @@ openweb() {
     echo "Check your browser, or Ctrl+click this link to open manually."
 }
 
+# ------------------------------------------------------
+# Integrity verification system for git files
+# ------------------------------------------------------
+verify_gitfiles() {
+    local file="$1"
+
+    case "$file" in
+        *.mbox)
+            local tmp_dir
+            tmp_dir=$(mktemp -d)
+
+            log "Checking mbox integrity: $file"
+
+            local count
+            count=$(git mailsplit -o "$tmp_dir" "$file" 2>/dev/null)
+            local status=$?
+
+            if [ $status -eq 0 ] && [ "$count" -gt 0 ]; then
+                log "Mbox is valid. Contains $count patch(es)."
+                rm -rf "$tmp_dir"
+                return 0
+            else
+                log "Mbox is corrupted, empty, or improperly formatted."
+                rm -rf "$tmp_dir"
+                return 1
+            fi
+            ;;
+
+        *.bundle)
+            log "Checking bundle integrity: $file"
+
+            if git bundle verify "$file" 2>/dev/null; then
+                log "Bundle is valid and intact."
+                return 0
+            else
+                log "Bundle is corrupted or invalid."
+                return 1
+            fi
+            ;;
+
+        # patch and diff file interchangeably may contain format-patch or raw diff
+        # this is general integrity checker; not this function's concern.
+        *.patch | *.diff)
+            log "Checking structural integrity: $file"
+
+            if ! git apply --stat "$file" > /dev/null 2>&1; then
+                log "Integrity check failed: File is corrupted, truncated, or not a valid diff/patch."
+                return 1
+            fi
+
+            log "Structural integrity verified (valid diff syntax)."
+            return 0
+            ;;
+
+        *)
+            log "Error: Unsupported file type for '$file'. Expected .mbox, .bundle, .patch, or .diff"
+            return 1
+            ;;
+    esac
+}
+}
+
 # Initialise keybinds
 # This is for non-core features that users can simply add.
 # Interactive mode only!
@@ -1886,6 +1948,21 @@ EOF
         log "Executing shell command: ${shell_cmd}"
         eval "${shell_cmd}"
         notify_git_watcher
+        ;;
+
+    *.patch|*.diff|*.bundle|*.mbox)
+        local patch_file="${cmd}"
+        # Strip wrapping quotes if present (user may type "path with spaces/file.patch")
+        [[ "${patch_file}" =~ ^\"(.+)\"$ ]] && patch_file="${BASH_REMATCH[1]}"
+        [[ "${patch_file}" =~ ^\'(.+)\'$ ]] && patch_file="${BASH_REMATCH[1]}"
+        # Unescape spaces (user may type path\ with\ spaces/file.patch)
+        patch_file="${patch_file//\\ / }"
+
+        [[ -f "${patch_file}" ]] || {
+            echo -e "\e[91mError: File not found: ${patch_file}\e[0m"
+            return 1
+        }
+        handle_gitfiles
         ;;
 
     *)
