@@ -1828,6 +1828,20 @@ verify_gitfiles() {
             ;;
     esac
 }
+
+differentiate_patchdiff() {
+    local file="$1" # File existence already checked
+
+    # git format-patch outputs standard mbox email headers.
+    # The most reliable indicators are 'From <hash>' (the envelope sender)
+    # and 'Subject: [PATCH' (the patch subject line).
+    # A raw diff will start with 'diff --git' or '--- a/' and lack these.
+
+    if grep -m 1 -qE "^(From [0-9a-f]{7,40} Mon Sep 17 00:00:00 2001|Subject: \[PATCH)" "$file"; then
+        echo "mbox"
+    else
+        echo "raw"
+    fi
 }
 
 # Initialise keybinds
