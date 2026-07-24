@@ -1844,6 +1844,99 @@ differentiate_patchdiff() {
     fi
 }
 
+show_stat_gitfile() {
+    local file="$1"
+    local ext="${file##*.}"
+
+    echo ""
+    echo -e "\e[1mFile: ${file}\e[0m"
+    echo ""
+
+    case "${ext}" in
+        mbox)
+            echo -e "\e[93mType:\e[0m mbox (format-patch email)"
+            local count
+            count=$(git mailsplit -o "$(mktemp -d)" "$file" 2>/dev/null | wc -l)
+            echo -e "\e[93mPatches:\e[0m ${count:-?}"
+            echo -e "\e[93mAction:\e[0m git am (will create commits)"
+            ;;
+        bundle)
+            echo -e "\e[93mType:\e[0m bundle"
+            echo -e "\e[93mContents:\e[0m"
+            git bundle verify "$file" 2>&1 | head -5
+            echo -e "\e[93mAction:\e[0m git fetch (updates remote refs, no commits)"
+            ;;
+        patch|diff)
+            local kind
+            kind=$(differentiate_patchdiff "$file")
+            if [[ "${kind}" == "mbox" ]]; then
+                echo -e "\e[93mType:\e[0m format-patch (mbox headers detected)"
+                echo -e "\e[93mAction:\e[0m git am (will create commits)"
+            else
+                echo -e "\e[93mType:\e[0m raw ${ext}"
+                echo -e "\e[93mStat:\e[0m"
+                git apply --stat "$file" 2>/dev/null
+                echo -e "\e[93mAction:\e[0m git apply (modifies working tree only)"
+            fi
+            ;;
+    esac
+    echo ""
+}
+
+prompt_user_apply_gitfile() {
+    local file="$1"
+    local ext="${file##*.}"
+
+    local action
+    case "${ext}" in
+        mbox|patch|diff)
+            local kind
+            kind=$(differentiate_patchdiff "${file}" 2>/dev/null || echo "raw")
+            if [[ "${ext}" == "mbox" || "${kind}" == "mbox" ]]; then
+                action="am (apply and create commits)"
+            else
+                action="apply (working tree only)"
+            fi
+            ;;
+        bundle)
+            action="fetch (update remote refs)"
+            ;;
+        *)
+            action="apply"
+            ;;
+    esac
+
+    read -r -p "Apply with git ${action}? (y/n) " confirm </dev/tty
+    [[ "${confirm}" =~ ^[Yy] ]]
+}
+
+apply_gitfile() {
+    local file="$1"
+    local ext="${file##*.}"
+
+    case "${ext}" in
+        mbox)
+            git am "${file}"
+            ;;
+        bundle)
+            git fetch "${file}"
+            ;;
+        patch|diff)
+            local kind
+            kind=$(differentiate_patchdiff "$file")
+            if [[ "${kind}" == "mbox" ]]; then
+                git am "${file}"
+            else
+                git apply "${file}"
+            fi
+            ;;
+        *)
+            echo -e "\e[91mError: Unknown file type .${ext}\e[0m"
+            return 1
+            ;;
+    esac
+}
+
 # Initialise keybinds
 # This is for non-core features that users can simply add.
 # Interactive mode only!
@@ -1976,7 +2069,65 @@ EOF
             echo -e "\e[91mError: File not found: ${patch_file}\e[0m"
             return 1
         }
-        handle_gitfiles
+        [[ -r "${patch_file}" ]] || {
+            echo -e "\e[91mError: File not readable: ${patch_file}\e[0m"
+            return 1
+        }
+
+        verify_gitfiles "${patch_file}" || return 1
+
+        #   Dirty working tree check
+        if [[ ${REPO_IS_DIRTY} -eq 1 || ${REPO_IS_DIRTY_AND_STAGED} -eq 1 ]]; then
+            echo -e "\e[93mWarning: You have uncommitted changes.\e[0m"
+            echo "Applying a patch with a dirty working tree may cause merge conflicts or lost work."
+            read -r -p "Continue anyway? (y/n) " confirm </dev/tty
+            [[ "${confirm}" =~ ^[Yy] ]] || return 1
+        fi
+
+        # 2. Inform user what this file will do
+        local ext="${patch_file##*.}"
+        case "${ext}" in
+            mbox|bundle)
+                echo -e "\e[93mThis file will create commits on your current branch.\e[0m"
+                ;;
+            *)
+                echo -e "\e[93mThis file will only modify your working directory (no commits).\e[0m"
+                ;;
+        esac
+
+        show_stat_gitfile "${patch_file}"
+
+        # 3. Branch isolation options
+        echo ""
+        echo "Apply options:"
+        echo "  1) Apply directly to current branch    (default)"
+        echo "  2) Create a new branch and apply there (recommended)"
+        echo "  3) Create a worktree and apply there   (safest)"
+        read -r -p "Choose [1/2/3]: " apply_mode </dev/tty
+
+        case "${apply_mode}" in
+            2)
+                local branch_name="patch-$(date +%Y%m%d-%H%M%S)"
+                git checkout -b "${branch_name}" || {
+                    echo -e "\e[91mError: Failed to create branch ${branch_name}\e[0m"
+                    return 1
+                }
+                echo "Created and switched to branch: ${branch_name}"
+                ;;
+            3)
+                local worktree_dir=".worktrees/patch-$(date +%Y%m%d-%H%M%S)"
+                mkdir -p .worktrees 2>/dev/null
+                git worktree add "${worktree_dir}" -b "wt-$(basename "${worktree_dir}")" || {
+                    echo -e "\e[91mError: Failed to create worktree at ${worktree_dir}\e[0m"
+                    return 1
+                }
+                echo "Created worktree at: ${worktree_dir}"
+                cd "${worktree_dir}" || return 1
+                ;;
+        esac
+
+        prompt_user_apply_gitfile "${patch_file}" || return 1
+        apply_gitfile "${patch_file}"
         ;;
 
     *)
